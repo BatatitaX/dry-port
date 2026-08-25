@@ -28,16 +28,32 @@ test("keeps every building in the same native 96 × 96 pixel-art style", () => {
 
 test("progresses from baby to teenager and adult through two explicit saved quests", () => {
   assert.match(extras, /export type AgeStage = "baby" \| "teen" \| "adult"/);
-  assert.match(page, /memories: \["origins", "joaquim"\], guide: "nilo"/);
+  assert.match(page, /baby: \{\s*memories: \["origins", "joaquim"\],/);
   assert.match(page, /memories: \["art", "design", "etec"\], guide: "luna"/);
   assert.match(page, /setAgeStage\(nextStage\)/);
   assert.match(page, /setEvolutionNotice\(nextStage\)/);
   assert.match(page, /collectedPoems, ageStage/);
   assert.match(extras, /MISSÃO CONCLUÍDA/);
   for (const age of ["baby", "teen", "adult"]) assert.deepEqual(pngSize(`public/characters/dry-${age}.png`), [96, 192]);
+  assert.deepEqual(pngSize("public/characters/dry-splash.png"), [192, 96]);
   assert.match(page, /backgroundSize: "192px 384px"/);
   assert.match(styles, /\.player\.age-baby \.player-sprite \{ transform: scale\(\.78\); \}/);
   assert.match(styles, /\.player\.age-teen \.player-sprite \{ transform: scale\(\.9\); \}/);
+});
+
+test("composes every interaction splash with the current age and coherent depth", () => {
+  assert.match(extras, /SceneStage\(\{ npc, structure, age = "adult" \}/);
+  assert.match(extras, /scene-age-\$\{age\}/);
+  assert.match(extras, /<SceneStage npc=\{npc\} age=\{age\}/);
+  assert.match(page, /<DialogueModal npc=\{openDialogue\} age=\{ageStage\}/);
+  assert.match(page, /<PoemModal poem=\{openPoem\} age=\{ageStage\}/);
+  assert.match(styles, /dry-splash\.png/);
+  assert.match(styles, /\.scene-age-baby/);
+  assert.match(styles, /\.scene-age-teen/);
+  assert.match(styles, /\.scene-age-adult/);
+  assert.match(extras, /x: 5680, y: 548/);
+  assert.match(page, /style=\{\{ left: landmark\.x, zIndex: 400 \}\}/);
+  assert.doesNotMatch(styles, /\.pixel-landmark \{[^}]*z-index: 4/);
 });
 
 test("uses stable diagonal movement and the custom consistent icon family", () => {

@@ -16,7 +16,7 @@ export const PORTRAIT_INDEX: Record<CastId, number> = {
 };
 
 export const NPCS: Array<{ id: NpcId; name: string; role: Record<GameLang, string>; x: number; y: number; secret?: boolean }> = [
-  { id: "nilo", name: "Nilo", role: { pt: "Guia da jornada", en: "Journey guide", es: "Guía del viaje" }, x: 1090, y: 545 },
+  { id: "nilo", name: "Nilo", role: { pt: "Guia no fim da jornada", en: "Guide at journey's end", es: "Guía al final del viaje" }, x: 5680, y: 548 },
   { id: "luna", name: "Luna", role: { pt: "Guardião das artes", en: "Keeper of the arts", es: "Guardiana de las artes" }, x: 1455, y: 590 },
   { id: "python", name: "Python", role: { pt: "O erro que bloqueia o caminho", en: "The bug blocking the path", es: "El error que bloquea el camino" }, x: 3360, y: 550 },
   { id: "jao", name: "Jão", role: { pt: "Cantor e compositor · caminho das artes", en: "Singer-songwriter · arts trail", es: "Cantante y compositor · camino del arte" }, x: 2080, y: 826, secret: true },
@@ -177,31 +177,32 @@ export function NpcSprite({ id, x, y, defeated = false }: { id: NpcId; x: number
   </div>;
 }
 
-export function SceneStage({ npc, structure, cast = "dry" }: { npc?: NpcId; structure?: string; cast?: CastId }) {
+export function SceneStage({ npc, structure, age = "adult" }: { npc?: NpcId; structure?: string; age?: AgeStage }) {
   const illustratedScene = npc === "jao" || npc === "nilo" ? `/world/interiors/dialogue-${npc}.png` : null;
   return <div className={`conversation-scene ${npc ? `scene-${npc}` : "scene-memory"}`} aria-label="Cena vista por trás do personagem">
     {illustratedScene ? <img className="scene-illustration" src={illustratedScene} alt="" decoding="async" /> : <>
       <img className="scene-ground" src="/world/terrain/world-base.png" alt="" decoding="async" />
       <img className="scene-tree scene-tree-left" src="/world/scenery/tree.png" alt="" decoding="async" />
       <img className="scene-tree scene-tree-right" src="/world/scenery/bush.png" alt="" decoding="async" />
-      {structure && <img className="scene-building" src={`/world/structures/${structure}.png`} alt="" decoding="async" />}
-      {npc && <span className={`scene-far-person scene-person-${npc}`} />}
-      <span className={`scene-player-back scene-player-${cast}`} />
     </>}
+    {structure && <img className="scene-building" src={`/world/structures/${structure}.png`} alt="" decoding="async" />}
+    {npc && <span className={`scene-far-person scene-person-${npc}`} />}
+    <span className={`scene-player-back scene-age-${age}`} />
     <span className="scene-caption">DRY // POV</span>
   </div>;
 }
 
-export function DialogueModal({ npc, lang, index, onAdvance, onClose }: { npc: NpcId; lang: GameLang; index: number; onAdvance: () => void; onClose: () => void }) {
+export function DialogueModal({ npc, age, lang, index, onAdvance, onClose }: { npc: NpcId; age: AgeStage; lang: GameLang; index: number; onAdvance: () => void; onClose: () => void }) {
   const lines = DIALOGUES[npc];
   const line = lines[index];
+  const portraitCast: CastId = line?.cast === "dry" ? (age === "adult" ? "dry" : age) : line?.cast;
   if (!line) return null;
   return <div className="story-backdrop" role="dialog" aria-modal="true" aria-labelledby="dialogue-speaker">
     <article className={`story-window story-${npc}`}>
       <button className="story-close" onClick={onClose} aria-label={lang === "en" ? "Close" : lang === "es" ? "Cerrar" : "Fechar"}><HudIcon name="close" /></button>
-      <SceneStage npc={npc} />
+      <SceneStage npc={npc} age={age} />
       <div className="story-bottom">
-        <Portrait cast={line.cast} />
+        <Portrait cast={portraitCast} />
         <div className="story-copy"><span>{NPCS.find((item) => item.id === npc)?.role[lang]}</span><h2 id="dialogue-speaker">{line.speaker}</h2><p>{line.text[lang]}</p></div>
         <button className="story-next" onClick={onAdvance}>{index === lines.length - 1 ? (lang === "en" ? "Finish" : lang === "es" ? "Terminar" : "Concluir") : (lang === "en" ? "Next" : lang === "es" ? "Siguiente" : "Continuar")} →</button>
       </div>
@@ -210,19 +211,19 @@ export function DialogueModal({ npc, lang, index, onAdvance, onClose }: { npc: N
   </div>;
 }
 
-export function BattleModal({ lang, hp, playerHp, round, onAction, onClose }: { lang: GameLang; hp: number; playerHp: number; round: number; onAction: (move: "inspect" | "fix" | "run") => void; onClose: () => void }) {
+export function BattleModal({ age, lang, hp, playerHp, round, onAction, onClose }: { age: AgeStage; lang: GameLang; hp: number; playerHp: number; round: number; onAction: (move: "inspect" | "fix" | "run") => void; onClose: () => void }) {
   const copy = lang === "en" ? { title: "PYTHON // FINAL ERROR", hint: "Inspect the failure, correct the logic and execute the solution.", inspect: "01 · INSPECT", fix: "02 · CORRECT", run: "03 · EXECUTE", player: "DRY", enemy: "ERROR" } : lang === "es" ? { title: "PYTHON // ERROR FINAL", hint: "Observa el fallo, corrige la lógica y ejecuta la solución.", inspect: "01 · OBSERVAR", fix: "02 · CORREGIR", run: "03 · EJECUTAR", player: "DRY", enemy: "ERROR" } : { title: "PYTHON // ERRO FINAL", hint: "Observe a falha, corrija a lógica e execute a solução.", inspect: "01 · OBSERVAR", fix: "02 · CORRIGIR", run: "03 · EXECUTAR", player: "DRY", enemy: "ERRO" };
   return <div className="story-backdrop battle-backdrop" role="dialog" aria-modal="true" aria-labelledby="battle-title"><article className="battle-window">
     <button className="story-close" onClick={onClose} aria-label={lang === "en" ? "Close" : lang === "es" ? "Cerrar" : "Fechar"}><HudIcon name="close" /></button>
     <header><small>BOSS ENCOUNTER</small><h2 id="battle-title">{copy.title}</h2><p>{copy.hint}</p></header>
-    <div className="battle-arena"><Portrait cast="dry" className="battle-portrait" /><span className="battle-versus">VS</span><span className="battle-enemy"><Portrait cast="python" className="battle-portrait" /><img className="battle-python-logo" src="/python-logo.svg" alt="" decoding="async" /></span></div>
+    <div className="battle-arena"><Portrait cast={age === "adult" ? "dry" : age} className="battle-portrait" /><span className="battle-versus">VS</span><span className="battle-enemy"><Portrait cast="python" className="battle-portrait" /><img className="battle-python-logo" src="/python-logo.svg" alt="" decoding="async" /></span></div>
     <div className="battle-health"><div><strong>{copy.player}</strong><span role="progressbar" aria-label={copy.player} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.max(playerHp, 0)}><i style={{ width: `${Math.max(playerHp, 0)}%` }} /></span><b>{Math.max(playerHp, 0)}</b></div><div><strong>{copy.enemy}</strong><span role="progressbar" aria-label={copy.enemy} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.max(hp, 0)}><i className="enemy-health" style={{ width: `${Math.max(hp, 0)}%` }} /></span><b>{Math.max(hp, 0)}</b></div></div>
     <div className="battle-actions"><button className={round === 0 ? "suggested" : ""} onClick={() => onAction("inspect")}>{copy.inspect}</button><button className={round === 1 ? "suggested" : ""} onClick={() => onAction("fix")}>{copy.fix}</button><button className={round >= 2 ? "suggested" : ""} onClick={() => onAction("run")}>{copy.run}</button></div>
   </article></div>;
 }
 
-export function PoemModal({ poem, lang, onClose }: { poem: Poem; lang: GameLang; onClose: () => void }) {
-  return <div className="story-backdrop" role="dialog" aria-modal="true" aria-labelledby="poem-title"><article className="poem-window"><button className="story-close" onClick={onClose} aria-label={lang === "en" ? "Close" : lang === "es" ? "Cerrar" : "Fechar"}><HudIcon name="close" /></button><small>{lang === "en" ? "RECOVERED MEMORY" : lang === "es" ? "MEMORIA RECUPERADA" : "MEMÓRIA RECUPERADA"}</small><h2 id="poem-title">{poem.title[lang]}</h2><div className="poem-rule" /><p>{poem.body[lang]}</p><button className="primary small" onClick={onClose}>{lang === "en" ? "Save to archive" : lang === "es" ? "Guardar en archivo" : "Guardar no arquivo"}</button></article></div>;
+export function PoemModal({ poem, age, lang, onClose }: { poem: Poem; age: AgeStage; lang: GameLang; onClose: () => void }) {
+  return <div className="story-backdrop" role="dialog" aria-modal="true" aria-labelledby="poem-title"><article className="poem-window"><button className="story-close" onClick={onClose} aria-label={lang === "en" ? "Close" : lang === "es" ? "Cerrar" : "Fechar"}><HudIcon name="close" /></button><SceneStage age={age} /><div className="poem-page"><small>{lang === "en" ? "RECOVERED MEMORY" : lang === "es" ? "MEMORIA RECUPERADA" : "MEMÓRIA RECUPERADA"}</small><h2 id="poem-title">{poem.title[lang]}</h2><div className="poem-rule" /><p>{poem.body[lang]}</p><button className="primary small" onClick={onClose}>{lang === "en" ? "Save to archive" : lang === "es" ? "Guardar en archivo" : "Guardar no arquivo"}</button></div></article></div>;
 }
 
 export function EvolutionModal({ stage, lang, onClose }: { stage: Exclude<AgeStage, "baby">; lang: GameLang; onClose: () => void }) {

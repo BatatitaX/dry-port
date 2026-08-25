@@ -394,11 +394,11 @@ const SCENERY: SceneryItem[] = [
   { x: 5580, y: 610, kind: "wildflowers", width: 37 },
 ];
 
-const EVOLUTION_QUESTS: Record<Exclude<AgeStage, "adult">, { memories: string[]; guide: NpcId; title: Record<Lang, string>; hint: Record<Lang, string> }> = {
+const EVOLUTION_QUESTS: Record<Exclude<AgeStage, "adult">, { memories: string[]; guide?: NpcId; title: Record<Lang, string>; hint: Record<Lang, string> }> = {
   baby: {
-    memories: ["origins", "joaquim"], guide: "nilo",
+    memories: ["origins", "joaquim"],
     title: { pt: "Crescer: primeiros passos", en: "Grow up: first steps", es: "Crecer: primeros pasos" },
-    hint: { pt: "Descubra suas origens, visite a escola e converse com Nilo.", en: "Discover your origins, visit the school and talk to Nilo.", es: "Descubre tus orígenes, visita la escuela y habla con Nilo." },
+    hint: { pt: "Descubra suas origens e visite a escola para completar a missão.", en: "Discover your origins and visit the school to complete the quest.", es: "Descubre tus orígenes y visita la escuela para completar la misión." },
   },
   teen: {
     memories: ["art", "design", "etec"], guide: "luna",
@@ -441,7 +441,7 @@ const spriteStyle = (index: number): React.CSSProperties => ({
 });
 
 function PixelLandmark({ landmark, memory, lang }: { landmark: Landmark; memory: Memory; lang: Lang }) {
-  return <div className={`pixel-landmark landmark-${landmark.kind}`} style={{ left: landmark.x }} aria-hidden="true">
+  return <div className={`pixel-landmark landmark-${landmark.kind}`} style={{ left: landmark.x, zIndex: 400 }} aria-hidden="true">
     <img className="landmark-asset" src={`/world/structures/${landmark.id}.png`} alt="" decoding="async" style={{ width: landmark.width }} />
     <span className="building-glyph">{landmark.glyph}</span>
     <div className="location-plaque"><small>{memory.year}</small><strong>{memory.title[lang]}</strong></div>
@@ -532,7 +532,7 @@ export default function Home() {
           setAgeStage(saved.ageStage === "teen" || saved.ageStage === "adult"
             ? saved.ageStage
             : savedIds(saved.unlocked).includes("etec") ? "adult"
-              : savedIds(saved.unlocked).includes("joaquim") && Array.isArray(saved.spokenNpcs) && saved.spokenNpcs.includes("nilo") ? "teen" : "baby");
+              : savedIds(saved.unlocked).includes("origins") && savedIds(saved.unlocked).includes("joaquim") ? "teen" : "baby");
           setFavorites(savedIds(saved.favorites));
           setHidden(savedIds(saved.hidden));
           setOrder(Array.from(new Set([...savedIds(saved.order), ...memories.map((memory) => memory.id)])));
@@ -576,7 +576,7 @@ export default function Home() {
   useEffect(() => {
     if (!hydrated.current || phase !== "game" || ageStage === "adult") return;
     const mission = EVOLUTION_QUESTS[ageStage];
-    if (!mission.memories.every((memoryId) => unlocked.includes(memoryId)) || !spokenNpcs.includes(mission.guide)) return;
+    if (!mission.memories.every((memoryId) => unlocked.includes(memoryId)) || (mission.guide && !spokenNpcs.includes(mission.guide))) return;
     const nextStage: Exclude<AgeStage, "baby"> = ageStage === "baby" ? "teen" : "adult";
     const frame = window.requestAnimationFrame(() => {
       setAgeStage(nextStage);
@@ -755,21 +755,18 @@ export default function Home() {
     backgroundSize: "192px 384px",
     backgroundPosition: `-${(moving ? walkFrame : 0) * 64}px -${directionRow[direction] * 96}px`,
   };
-  const agePortrait: CastId = ageStage === "adult" ? "dry" : ageStage;
   const evolutionQuest = ageStage === "adult" ? null : EVOLUTION_QUESTS[ageStage];
   const evolutionProgress = evolutionQuest
-    ? evolutionQuest.memories.filter((memoryId) => unlocked.includes(memoryId)).length + Number(spokenNpcs.includes(evolutionQuest.guide))
+    ? evolutionQuest.memories.filter((memoryId) => unlocked.includes(memoryId)).length + Number(Boolean(evolutionQuest.guide && spokenNpcs.includes(evolutionQuest.guide)))
     : 0;
-  const evolutionTotal = evolutionQuest ? evolutionQuest.memories.length + 1 : 0;
+  const evolutionTotal = evolutionQuest ? evolutionQuest.memories.length + Number(Boolean(evolutionQuest.guide)) : 0;
   const questTitle = evolutionQuest
     ? evolutionQuest.title[lang]
     : bossDefeated
     ? collectedPoems.length === POEMS.length
       ? (lang === "en" ? "Every verse recovered" : lang === "es" ? "Todos los versos recuperados" : "Todos os versos recuperados")
       : (lang === "en" ? "Recover forgotten poems" : lang === "es" ? "Recupera los poemas olvidados" : "Recupere os poemas perdidos")
-    : spokenNpcs.includes("nilo")
-      ? (lang === "en" ? "Find and defeat Python" : lang === "es" ? "Encuentra y derrota a Python" : "Encontre e derrote Python")
-      : t.missionName;
+    : (lang === "en" ? "Find and defeat Python" : lang === "es" ? "Encuentra y derrota a Python" : "Encontre e derrote Python");
 
   const orderedMemories = order.map((id) => memories.find((m) => m.id === id)).filter(Boolean) as Memory[];
   const selectedForPrint = orderedMemories.filter((m) => unlocked.includes(m.id) && !hidden.includes(m.id));
@@ -969,13 +966,13 @@ export default function Home() {
         <button className="down" aria-label={lang === "en" ? "Move down" : lang === "es" ? "Mover abajo" : "Mover para baixo"} onPointerDown={(event) => startTouchMovement(event, "s")} onPointerUp={(event) => stopTouchMovement(event, "s")} onPointerCancel={(event) => stopTouchMovement(event, "s")} onClick={() => movePlayer(0, 24, "down")}>▼</button>
       </div>
 
-      {openMemory && <MemoryModal memory={openMemory} lang={lang} age={agePortrait} unlocked={unlocked.includes(openMemory.id)} onClose={() => setOpenMemory(null)} onFavorite={() => toggle(openMemory.id, setFavorites)} favorite={favorites.includes(openMemory.id)} t={t} />}
+      {openMemory && <MemoryModal memory={openMemory} lang={lang} age={ageStage} unlocked={unlocked.includes(openMemory.id)} onClose={() => setOpenMemory(null)} onFavorite={() => toggle(openMemory.id, setFavorites)} favorite={favorites.includes(openMemory.id)} t={t} />}
       {inventoryOpen && <Inventory lang={lang} t={t} memories={orderedMemories} unlocked={unlocked} favorites={favorites} hidden={hidden} jaoUnlocked={jaoUnlocked} onClose={() => setInventoryOpen(false)} onOpen={(memory) => { setInventoryOpen(false); reveal(memory); }} onFavorite={(id) => toggle(id, setFavorites)} onHide={(id) => toggle(id, setHidden)} onMove={reorder} onPrint={() => window.print()} onShare={share} onRevealAll={revealAll} />}
       {mapOpen && <WorldMap lang={lang} t={t} explored={explored} pos={pos} unlocked={unlocked} bossDefeated={bossDefeated} collectedPoems={collectedPoems} onClose={() => setMapOpen(false)} />}
-      {openDialogue && <DialogueModal npc={openDialogue} lang={lang} index={dialogueIndex} onAdvance={advanceDialogue} onClose={() => { setOpenDialogue(null); setDialogueIndex(0); }} />}
-      {battleOpen && <BattleModal lang={lang} hp={bossHp} playerHp={playerHp} round={battleRound} onAction={battleAction} onClose={() => setBattleOpen(false)} />}
+      {openDialogue && <DialogueModal npc={openDialogue} age={ageStage} lang={lang} index={dialogueIndex} onAdvance={advanceDialogue} onClose={() => { setOpenDialogue(null); setDialogueIndex(0); }} />}
+      {battleOpen && <BattleModal age={ageStage} lang={lang} hp={bossHp} playerHp={playerHp} round={battleRound} onAction={battleAction} onClose={() => setBattleOpen(false)} />}
       {computerOpen && <ComputerModal lang={lang} poems={POEMS} collected={collectedPoems} jaoUnlocked={jaoUnlocked} bossDefeated={bossDefeated} onRead={(poem) => { setComputerOpen(false); setOpenPoem(poem); }} onClose={() => setComputerOpen(false)} />}
-      {openPoem && <PoemModal poem={openPoem} lang={lang} onClose={() => setOpenPoem(null)} />}
+      {openPoem && <PoemModal poem={openPoem} age={ageStage} lang={lang} onClose={() => setOpenPoem(null)} />}
       {evolutionNotice && <EvolutionModal stage={evolutionNotice} lang={lang} onClose={() => setEvolutionNotice(null)} />}
       {toast && <div className="toast" role="status" aria-live="polite">✦ {toast}</div>}
 
@@ -1011,13 +1008,14 @@ function WorldMap({ lang, t, explored, pos, unlocked, bossDefeated, collectedPoe
   </div>;
 }
 
-function MemoryModal({ memory, lang, age, onClose, onFavorite, favorite, t }: { memory: Memory; lang: Lang; age: CastId; unlocked: boolean; onClose: () => void; onFavorite: () => void; favorite: boolean; t: Record<string, string> }) {
+function MemoryModal({ memory, lang, age, onClose, onFavorite, favorite, t }: { memory: Memory; lang: Lang; age: AgeStage; unlocked: boolean; onClose: () => void; onFavorite: () => void; favorite: boolean; t: Record<string, string> }) {
   const landmark = LANDMARKS.find((item) => item.memoryId === memory.id);
+  const portraitCast: CastId = age === "adult" ? "dry" : age;
   return <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="memory-title" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
     <article className="memory-modal enhanced-memory-modal">
       <button className="modal-close" onClick={onClose} aria-label={t.close}>×</button>
-      <SceneStage structure={landmark?.id} cast={age} />
-      <div className="memory-scene-bottom"><Portrait cast={age} /><div className="memory-scene-copy"><div className="memory-year">MEMORY // {memory.id === "future" ? t.current : memory.year}</div><p className="memory-category">{memory.category.toUpperCase()}</p><h2 id="memory-title">{memory.title[lang]}</h2><h3>{memory.subtitle[lang]}</h3><p>{memory.body[lang]}</p><div className="modal-actions"><button className={favorite ? "fav active" : "fav"} onClick={onFavorite} aria-pressed={favorite}>★ {t.favorite}</button>{memory.link && <a href={memory.link} target="_blank" rel="noopener noreferrer">↗ {memory.linkLabel}</a>}</div></div></div>
+      <SceneStage structure={landmark?.id} age={age} />
+      <div className="memory-scene-bottom"><Portrait cast={portraitCast} /><div className="memory-scene-copy"><div className="memory-year">MEMORY // {memory.id === "future" ? t.current : memory.year}</div><p className="memory-category">{memory.category.toUpperCase()}</p><h2 id="memory-title">{memory.title[lang]}</h2><h3>{memory.subtitle[lang]}</h3><p>{memory.body[lang]}</p><div className="modal-actions"><button className={favorite ? "fav active" : "fav"} onClick={onFavorite} aria-pressed={favorite}>★ {t.favorite}</button>{memory.link && <a href={memory.link} target="_blank" rel="noopener noreferrer">↗ {memory.linkLabel}</a>}</div></div></div>
     </article>
   </div>;
 }

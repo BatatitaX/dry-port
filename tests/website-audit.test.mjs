@@ -20,6 +20,7 @@ test("every world structure, scenery image, portrait and résumé exists", () =>
     "public/characters/dry-baby.png",
     "public/characters/dry-teen.png",
     "public/characters/dry-adult.png",
+    "public/characters/dry-splash.png",
     "public/characters/jao.png",
     "public/characters/nilo.png",
     "public/characters/dry-portrait.png",
