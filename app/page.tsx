@@ -52,7 +52,7 @@ const ui: Record<Lang, Record<string, string>> = {
     quick: "VER PORTFÓLIO RÁPIDO",
     sound: "Som",
     motion: "Movimento reduzido",
-    controls: "A/D percorre a jornada • W/S ajusta a posição • Shift corre • E interage • M abre o mapa",
+    controls: "WASD ou setas movimentam • Shift corre • E interage • M abre o mapa",
     mission: "MISSÃO ATIVA",
     missionName: "Descobrindo o passado",
     inventory: "Memórias",
@@ -94,7 +94,7 @@ const ui: Record<Lang, Record<string, string>> = {
     quick: "OPEN QUICK PORTFOLIO",
     sound: "Sound",
     motion: "Reduced motion",
-    controls: "A/D follows the journey • W/S adjusts position • Shift runs • E interacts • M opens the map",
+    controls: "WASD or arrows move • Shift runs • E interacts • M opens the map",
     mission: "ACTIVE QUEST",
     missionName: "Discovering the past",
     inventory: "Memories",
@@ -136,7 +136,7 @@ const ui: Record<Lang, Record<string, string>> = {
     quick: "VER PORTAFOLIO RÁPIDO",
     sound: "Sonido",
     motion: "Movimiento reducido",
-    controls: "A/D recorre el viaje • W/S ajusta la posición • Shift corre • E interactúa • M abre el mapa",
+    controls: "WASD o flechas mueven • Shift corre • E interactúa • M abre el mapa",
     mission: "MISIÓN ACTIVA",
     missionName: "Descubriendo el pasado",
     inventory: "Memorias",
@@ -397,7 +397,7 @@ const spriteStyle = (index: number): React.CSSProperties => ({
 
 function PixelLandmark({ landmark, memory, lang }: { landmark: Landmark; memory: Memory; lang: Lang }) {
   return <div className={`pixel-landmark landmark-${landmark.kind}`} style={{ left: landmark.x }} aria-hidden="true">
-    <img className="landmark-asset" src={`/world/structures/${landmark.id}.png`} alt="" style={{ width: landmark.width }} />
+    <img className="landmark-asset" src={`/world/structures/${landmark.id}.png`} alt="" decoding="async" style={{ width: landmark.width }} />
     <span className="building-glyph">{landmark.glyph}</span>
     <div className="location-plaque"><small>{memory.year}</small><strong>{memory.title[lang]}</strong></div>
   </div>;
@@ -454,8 +454,13 @@ export default function Home() {
     gain.gain.setValueAtTime(0.05, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
     oscillator.connect(gain).connect(ctx.destination);
+    oscillator.onended = () => { void ctx.close(); };
     oscillator.start(); oscillator.stop(ctx.currentTime + 0.26);
   }, [sound]);
+
+  useEffect(() => {
+    document.documentElement.lang = lang === "pt" ? "pt-BR" : lang;
+  }, [lang]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -463,16 +468,38 @@ export default function Home() {
         const raw = localStorage.getItem("dry-portfolio-save-v3") || localStorage.getItem("dry-portfolio-save-v2");
         if (raw) {
           const saved = JSON.parse(raw);
+          const memoryIds = new Set(memories.map((memory) => memory.id));
+          const savedIds = (value: unknown) => Array.isArray(value)
+            ? value.filter((item): item is string => typeof item === "string" && memoryIds.has(item))
+            : [];
           setHasSave(true);
-          setLang(saved.lang || "pt"); setSound(Boolean(saved.sound)); setReducedMotion(Boolean(saved.reducedMotion));
-          setPos(saved.pos && isWalkable(saved.pos, Boolean(saved.bossDefeated)) ? saved.pos : START_POS); setUnlocked(saved.unlocked || []); setFavorites(saved.favorites || []);
-          setHidden(saved.hidden || []);
-          setOrder(Array.from(new Set([...(saved.order || []), ...memories.map((m) => m.id)])));
-          setExplored((saved.explored || [fogKey(START_POS.x, START_POS.y)]).filter((cell: string) => Number(cell.split(":")[1]) < FOG_ROWS));
+          setLang(saved.lang === "en" || saved.lang === "es" ? saved.lang : "pt");
+          setSound(Boolean(saved.sound));
+          setReducedMotion(Boolean(saved.reducedMotion));
+          const savedPosition = saved.pos && typeof saved.pos.x === "number" && typeof saved.pos.y === "number" &&
+            Number.isFinite(saved.pos.x) && Number.isFinite(saved.pos.y) &&
+            isWalkable(saved.pos, Boolean(saved.bossDefeated)) ? saved.pos : START_POS;
+          setPos(savedPosition);
+          setUnlocked(savedIds(saved.unlocked));
+          setFavorites(savedIds(saved.favorites));
+          setHidden(savedIds(saved.hidden));
+          setOrder(Array.from(new Set([...savedIds(saved.order), ...memories.map((memory) => memory.id)])));
+          const savedCells = Array.isArray(saved.explored) ? saved.explored : [fogKey(START_POS.x, START_POS.y)];
+          setExplored(savedCells.filter((cell): cell is string => {
+            if (typeof cell !== "string") return false;
+            const [col, row] = cell.split(":").map(Number);
+            return Number.isInteger(col) && Number.isInteger(row) && col >= 0 && col < FOG_COLS && row >= 0 && row < FOG_ROWS;
+          }));
           setJaoUnlocked(Boolean(saved.jaoUnlocked));
-          setSpokenNpcs(Array.isArray(saved.spokenNpcs) ? saved.spokenNpcs : []);
+          setSpokenNpcs(Array.isArray(saved.spokenNpcs)
+            ? saved.spokenNpcs.filter((id: unknown): id is NpcId => typeof id === "string" && NPCS.some((npc) => npc.id === id))
+            : []);
           setBossDefeated(Boolean(saved.bossDefeated));
-          setCollectedPoems(Array.isArray(saved.collectedPoems) ? saved.collectedPoems : []);
+          setCollectedPoems(Array.isArray(saved.collectedPoems)
+            ? saved.collectedPoems.filter((id: unknown): id is string => typeof id === "string" && POEMS.some((poem) => poem.id === id))
+            : []);
+        } else {
+          setReducedMotion(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
         }
         const shared = new URLSearchParams(location.search).get("mem");
         if (shared) { const ids = shared.split(",").filter((id) => memories.some((m) => m.id === id)); setUnlocked(ids); setFavorites(ids); }
@@ -484,7 +511,14 @@ export default function Home() {
 
   useEffect(() => {
     if (!hydrated.current) return;
-    localStorage.setItem("dry-portfolio-save-v3", JSON.stringify({ lang, sound, reducedMotion, pos, unlocked, favorites, hidden, order, explored, jaoUnlocked, spokenNpcs, bossDefeated, collectedPoems }));
+    const timeout = window.setTimeout(() => {
+      try {
+        localStorage.setItem("dry-portfolio-save-v3", JSON.stringify({ lang, sound, reducedMotion, pos, unlocked, favorites, hidden, order, explored, jaoUnlocked, spokenNpcs, bossDefeated, collectedPoems }));
+      } catch {
+        // Browsers can block local storage or exhaust its quota; gameplay remains usable.
+      }
+    }, 220);
+    return () => window.clearTimeout(timeout);
   }, [lang, sound, reducedMotion, pos, unlocked, favorites, hidden, order, explored, jaoUnlocked, spokenNpcs, bossDefeated, collectedPoems]);
 
   const reveal = useCallback((memory: Memory) => {
@@ -552,15 +586,23 @@ export default function Home() {
   useEffect(() => {
     if (phase !== "game" || openMemory || inventoryOpen || mapOpen || openDialogue || battleOpen || computerOpen || openPoem) return;
     const keysForEffect = pressedKeys.current;
+    const arrowKeys: Record<string, string> = { arrowup: "w", arrowleft: "a", arrowdown: "s", arrowright: "d" };
+    const movementKey = (key: string) => arrowKeys[key] ?? key;
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (["w", "a", "s", "d"].includes(key)) { event.preventDefault(); keysForEffect.add(key); }
+      const mappedKey = movementKey(key);
+      if (["w", "a", "s", "d"].includes(mappedKey)) { event.preventDefault(); keysForEffect.add(mappedKey); }
       if (key === "shift") { event.preventDefault(); keysForEffect.add(key); }
-      if (key === "e" || key === "enter") { event.preventDefault(); interactionRef.current(); }
+      if ((key === "e" || key === "enter") && !event.repeat) {
+        if (key === "enter" && event.target instanceof HTMLElement && event.target.closest("button, a, input, select, textarea")) return;
+        event.preventDefault(); interactionRef.current();
+      }
       if (key === "m") { event.preventDefault(); setMapOpen(true); }
     };
-    const onKeyUp = (event: KeyboardEvent) => keysForEffect.delete(event.key.toLowerCase());
+    const onKeyUp = (event: KeyboardEvent) => keysForEffect.delete(movementKey(event.key.toLowerCase()));
+    const onWindowBlur = () => keysForEffect.clear();
     window.addEventListener("keydown", onKeyDown); window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onWindowBlur);
     let frameId = 0; let previous = performance.now();
     const animate = (now: number) => {
       const delta = Math.min((now - previous) / 1000, 0.035); previous = now;
@@ -577,8 +619,8 @@ export default function Home() {
           const step = WALK_SPEED * (sprinting ? 2 : 1) * delta;
           let next = current;
           const nextX = { x: current.x + dx * step, y: current.y };
-          const nextY = { x: next.x, y: current.y + dy * step };
           if (isWalkable(nextX, bossDefeated)) next = nextX;
+          const nextY = { x: next.x, y: current.y + dy * step };
           if (isWalkable(nextY, bossDefeated)) next = { x: next.x, y: nextY.y };
           return next;
         });
@@ -586,19 +628,40 @@ export default function Home() {
       setMoving(active); setRunning(sprinting); frameId = requestAnimationFrame(animate);
     };
     frameId = requestAnimationFrame(animate);
-    return () => { window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); keysForEffect.clear(); cancelAnimationFrame(frameId); setMoving(false); setRunning(false); };
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onWindowBlur);
+      keysForEffect.clear(); cancelAnimationFrame(frameId); setMoving(false); setRunning(false);
+    };
   }, [phase, openMemory, inventoryOpen, mapOpen, openDialogue, battleOpen, computerOpen, openPoem, bossDefeated]);
 
   const resetGame = () => {
     setPos(START_POS); setExplored([fogKey(START_POS.x, START_POS.y)]); setUnlocked([]); setFavorites([]); setHidden([]); setOrder(memories.map((m) => m.id)); setJaoUnlocked(false);
     setSpokenNpcs([]); setBossDefeated(false); setCollectedPoems([]); setBossHp(100); setPlayerHp(100); setBattleRound(0);
-    localStorage.removeItem("dry-portfolio-save-v2"); localStorage.removeItem("dry-portfolio-save-v3"); setHasSave(false); setPhase("game");
+    try {
+      localStorage.removeItem("dry-portfolio-save-v2");
+      localStorage.removeItem("dry-portfolio-save-v3");
+    } catch {
+      // A blocked storage API must not prevent the player from starting over.
+    }
+    setHasSave(false); setPhase("game");
   };
 
   const movePlayer = (dx: number, dy: number, nextDirection: Direction) => {
     setDirection(nextDirection); setMoving(true); setWalkFrame((value) => (value + 1) % 3);
     setPos((current) => { const next = { x: current.x + dx, y: current.y + dy }; return isWalkable(next, bossDefeated) ? next : current; });
     window.setTimeout(() => setMoving(false), 140);
+  };
+
+  const startTouchMovement = (event: React.PointerEvent<HTMLButtonElement>, key: string) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    pressedKeys.current.add(key);
+  };
+
+  const stopTouchMovement = (event: React.PointerEvent<HTMLButtonElement>, key: string) => {
+    pressedKeys.current.delete(key);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
   const cameraX = Math.round(clamp(pos.x - viewport.width * 0.38, 0, Math.max(0, WORLD.width - viewport.width)));
@@ -629,7 +692,11 @@ export default function Home() {
     const url = `${location.origin}${location.pathname}?mem=${ids.join(",")}`;
     try {
       if (navigator.share) await navigator.share({ title: "DRY // Portfolio", text: "Meu recorte da jornada de Adryel Luís Rodrigues", url });
-      else { await navigator.clipboard.writeText(url); setToast("Link copiado!"); }
+      else {
+        await navigator.clipboard.writeText(url);
+        setToast(lang === "en" ? "Link copied!" : lang === "es" ? "¡Enlace copiado!" : "Link copiado!");
+        window.setTimeout(() => setToast(""), 2200);
+      }
     } catch { /* share dismissed */ }
   };
 
@@ -679,17 +746,63 @@ export default function Home() {
     setBattleRound((value) => value + 1);
   };
 
+  useEffect(() => {
+    if (!openMemory && !inventoryOpen && !mapOpen && !openDialogue && !battleOpen && !computerOpen && !openPoem) return;
+
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const getDialog = () => {
+      const dialogs = document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]');
+      return dialogs[dialogs.length - 1] ?? null;
+    };
+
+    const frame = window.requestAnimationFrame(() => {
+      const dialog = getDialog();
+      const preferredFocus = dialog?.querySelector<HTMLElement>(".story-next, .battle-actions .suggested");
+      (preferredFocus ?? dialog?.querySelector<HTMLElement>(focusableSelector))?.focus();
+    });
+
+    const handleDialogKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (openPoem) setOpenPoem(null);
+        else if (mapOpen) setMapOpen(false);
+        else if (computerOpen) setComputerOpen(false);
+        else if (battleOpen) setBattleOpen(false);
+        else if (openDialogue) { setOpenDialogue(null); setDialogueIndex(0); }
+        else if (openMemory) setOpenMemory(null);
+        else if (inventoryOpen) setInventoryOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(getDialog()?.querySelectorAll<HTMLElement>(focusableSelector) ?? []);
+      if (!focusable.length) { event.preventDefault(); return; }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+
+    window.addEventListener("keydown", handleDialogKey);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", handleDialogKey);
+      if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
+    };
+  }, [openMemory, inventoryOpen, mapOpen, openDialogue, battleOpen, computerOpen, openPoem]);
+
   if (phase === "intro") return (
     <main className={`intro ${reducedMotion ? "reduced" : ""}`}>
       <div className="intro-stars" aria-hidden="true" />
-      <nav className="intro-nav" aria-label="Idioma">
+      <nav className="intro-nav" aria-label={lang === "en" ? "Language" : "Idioma"}>
         <div className="brand"><span className="brand-rune">D</span><span>DRY</span></div>
-        <div className="language-switch">{(["pt", "en", "es"] as Lang[]).map((code) => <button key={code} className={lang === code ? "active" : ""} onClick={() => setLang(code)}>{code.toUpperCase()}</button>)}</div>
+        <div className="language-switch">{(["pt", "en", "es"] as Lang[]).map((code) => <button key={code} className={lang === code ? "active" : ""} aria-pressed={lang === code} aria-label={code === "pt" ? "Português" : code === "en" ? "English" : "Español"} onClick={() => setLang(code)}>{code.toUpperCase()}</button>)}</div>
       </nav>
       <section className="intro-card">
         <p className="kicker">{t.eyebrow}</p>
         <h1><span>ADRYEL LUÍS</span><strong>RODRIGUES</strong></h1>
-        <p className="intro-copy"><i>“Curioso.”</i> {t.intro}</p>
+        <p className="intro-copy"><i>{lang === "en" ? "“Curious.”" : "“Curioso.”"}</i> {t.intro}</p>
         <div className="intro-actions">
           {hasSave && <button className="primary" onClick={() => setPhase("game")}><span>▶</span>{t.resume}</button>}
           <button className={hasSave ? "secondary" : "primary"} onClick={hasSave ? resetGame : () => setPhase("game")}><span>{hasSave ? "↻" : "▶"}</span>{hasSave ? t.restart : t.start}</button>
@@ -705,26 +818,26 @@ export default function Home() {
     </main>
   );
 
-  if (phase === "quick") return <QuickPortfolio lang={lang} setLang={setLang} onJourney={() => setPhase("game")} t={t} jaoUnlocked={jaoUnlocked} />;
+  if (phase === "quick") return <QuickPortfolio lang={lang} setLang={setLang} onJourney={() => setPhase("game")} t={t} jaoUnlocked={jaoUnlocked} reducedMotion={reducedMotion} />;
 
   return (
     <main className={`game-shell ${reducedMotion ? "reduced" : ""}`}>
       <header className="game-hud">
-        <div className="quest-box"><span className="quest-gem"><HudIcon name={bossDefeated ? "paper" : "memory"} /></span><div><small>{t.mission}</small><strong>{questTitle}</strong><em>{bossDefeated ? `${collectedPoems.length}/${POEMS.length} poemas recuperados` : `${unlocked.length}/${memories.length} ${t.discovered}`}</em></div></div>
+        <div className="quest-box"><span className="quest-gem"><HudIcon name={bossDefeated ? "paper" : "memory"} /></span><div><small>{t.mission}</small><strong>{questTitle}</strong><em>{bossDefeated ? `${collectedPoems.length}/${POEMS.length} ${lang === "en" ? "poems recovered" : lang === "es" ? "poemas recuperados" : "poemas recuperados"}` : `${unlocked.length}/${memories.length} ${t.discovered}`}</em></div></div>
         <div className="hud-actions">
-          <button onClick={() => setPhase("quick")}><HudIcon name="portfolio" /> <span>{t.portfolio}</span></button>
-          <button onClick={() => setMapOpen(true)}><HudIcon name="map" /> <span>{t.openMap}</span></button>
-          <button onClick={() => setInventoryOpen(true)}><HudIcon name="memory" /> <span>{t.inventory}</span><b>{unlocked.length}</b></button>
-          <button onClick={() => setComputerOpen(true)} aria-label="Banco de memórias"><HudIcon name="computer" /><span>PC</span></button>
-          <button onClick={() => setSound((v) => !v)} aria-label={t.sound}><HudIcon name={sound ? "sound" : "muted"} /></button>
-          <div className="language-switch compact">{(["pt", "en", "es"] as Lang[]).map((code) => <button key={code} className={lang === code ? "active" : ""} onClick={() => setLang(code)}>{code.toUpperCase()}</button>)}</div>
+          <button onClick={() => setPhase("quick")} aria-label={t.portfolio}><HudIcon name="portfolio" /> <span>{t.portfolio}</span></button>
+          <button onClick={() => setMapOpen(true)} aria-label={t.openMap}><HudIcon name="map" /> <span>{t.openMap}</span></button>
+          <button onClick={() => setInventoryOpen(true)} aria-label={t.inventory}><HudIcon name="memory" /> <span>{t.inventory}</span><b>{unlocked.length}</b></button>
+          <button onClick={() => setComputerOpen(true)} aria-label={lang === "en" ? "Memory archive" : lang === "es" ? "Banco de recuerdos" : "Banco de memórias"}><HudIcon name="computer" /><span>PC</span></button>
+          <button onClick={() => setSound((v) => !v)} aria-label={t.sound} aria-pressed={sound}><HudIcon name={sound ? "sound" : "muted"} /></button>
+          <div className="language-switch compact">{(["pt", "en", "es"] as Lang[]).map((code) => <button key={code} className={lang === code ? "active" : ""} aria-pressed={lang === code} aria-label={code === "pt" ? "Português" : code === "en" ? "English" : "Español"} onClick={() => setLang(code)}>{code.toUpperCase()}</button>)}</div>
         </div>
       </header>
 
       <section className="map-wrap" aria-label="Mapa explorável">
         <div className="map-stage" ref={mapRef}>
           <div className="map-world" style={{ width: WORLD.width, height: WORLD.height, transform: `translate3d(${-cameraX}px, ${-cameraY}px, 0)` }}>
-            <img className="world-base-asset" src="/world/terrain/world-base.png" alt="" aria-hidden="true" />
+            <img className="world-base-asset" src="/world/terrain/world-base.png" alt="" aria-hidden="true" decoding="async" fetchPriority="high" />
             <div className="river-water" style={{ left: RIVER.x, top: RIVER.y, width: RIVER.width, height: RIVER.height }} aria-hidden="true"><span className="river-lily river-lily-one" /><span className="river-lily river-lily-two" /></div>
             {PATH_ZONES.filter((zone) => zone.id !== "main").map((zone) => <div key={zone.id} className={`branch-path branch-${zone.id}`} style={{ left: zone.x, top: zone.y, width: zone.width, height: zone.height }} aria-hidden="true" />)}
             {LANDMARKS.map((landmark) => <div key={`door-${landmark.id}`} className="building-door-path" style={{ left: landmark.x - 28 }} aria-hidden="true" />)}
@@ -732,7 +845,7 @@ export default function Home() {
             <div className="path-arrow start-arrow">INÍCIO <span>→</span></div>
             <div className="path-arrow end-arrow"><span>→</span> PRÓXIMA MISSÃO</div>
             {SCENERY.map((item, index) => <div key={`${item.x}-${item.y}-${index}`} className={`scenery scenery-${item.kind}`} style={{ left: item.x, top: item.y - 220, width: item.width, zIndex: Math.round(item.y - 220) }} aria-hidden="true">
-              <img src={`/world/scenery/${item.kind}.png`} alt="" />
+              <img src={`/world/scenery/${item.kind}.png`} alt="" decoding="async" />
               {item.label && <span>{item.label}</span>}
             </div>)}
             {LANDMARKS.map((landmark) => {
@@ -751,23 +864,27 @@ export default function Home() {
             <div className={`player age-${ageStage} facing-${direction} ${moving ? "is-moving" : ""} ${running ? "is-running" : ""}`} style={{ left: pos.x, top: pos.y, zIndex: Math.round(pos.y) }} aria-label="Dry"><span className="player-shadow" /><span className="player-sprite" style={playerSprite} /><b>DRY</b></div>
           </div>
           <div className="map-vignette" />
-          {(nearest?.d < 145 || (nearestNpc && nearestNpc.d < 92) || (nearestPoem && nearestPoem.d < 68) || nearComputer) && <button className="nearby" onClick={interact}>E <span>{nearestPoem && nearestPoem.d < 68 ? (lang === "en" ? "Collect poem" : "Recolher poema") : nearestNpc && nearestNpc.d < 92 ? (lang === "en" ? "Talk" : "Conversar") : nearComputer ? (lang === "en" ? "Open archive" : "Abrir arquivo") : t.interact}</span></button>}
+          {(nearest?.d < 145 || (nearestNpc && nearestNpc.d < 92) || (nearestPoem && nearestPoem.d < 68) || nearComputer) && <button className="nearby" onClick={interact}>E <span>{nearestPoem && nearestPoem.d < 68 ? (lang === "en" ? "Collect poem" : lang === "es" ? "Recoger poema" : "Recolher poema") : nearestNpc && nearestNpc.d < 92 ? (lang === "en" ? "Talk" : lang === "es" ? "Hablar" : "Conversar") : nearComputer ? (lang === "en" ? "Open archive" : lang === "es" ? "Abrir archivo" : "Abrir arquivo") : t.interact}</span></button>}
         </div>
         <div className="map-caption"><button onClick={() => setMapOpen(true)}><HudIcon name="map" /> {t.openMap}</button><span>{t.controls}</span><span>{bossDefeated ? `${collectedPoems.length}/${POEMS.length}` : `${Math.round((pos.x / WORLD.width) * 100)}%`}</span></div>
       </section>
 
-      <div className="dpad" aria-label="Controles por toque">
-        <button className="up" onClick={() => movePlayer(0, -24, "up")}>▲</button><button className="left" onClick={() => movePlayer(-24, 0, "left")}>◀</button><button className="center" onClick={interact}>E</button><button className="right" onClick={() => movePlayer(24, 0, "right")}>▶</button><button className="down" onClick={() => movePlayer(0, 24, "down")}>▼</button>
+      <div className="dpad" aria-label={lang === "en" ? "Touch controls" : lang === "es" ? "Controles táctiles" : "Controles por toque"}>
+        <button className="up" aria-label={lang === "en" ? "Move up" : lang === "es" ? "Mover arriba" : "Mover para cima"} onPointerDown={(event) => startTouchMovement(event, "w")} onPointerUp={(event) => stopTouchMovement(event, "w")} onPointerCancel={(event) => stopTouchMovement(event, "w")} onClick={() => movePlayer(0, -24, "up")}>▲</button>
+        <button className="left" aria-label={lang === "en" ? "Move left" : lang === "es" ? "Mover a la izquierda" : "Mover para a esquerda"} onPointerDown={(event) => startTouchMovement(event, "a")} onPointerUp={(event) => stopTouchMovement(event, "a")} onPointerCancel={(event) => stopTouchMovement(event, "a")} onClick={() => movePlayer(-24, 0, "left")}>◀</button>
+        <button className="center" aria-label={t.interact} onClick={interact}>E</button>
+        <button className="right" aria-label={lang === "en" ? "Move right" : lang === "es" ? "Mover a la derecha" : "Mover para a direita"} onPointerDown={(event) => startTouchMovement(event, "d")} onPointerUp={(event) => stopTouchMovement(event, "d")} onPointerCancel={(event) => stopTouchMovement(event, "d")} onClick={() => movePlayer(24, 0, "right")}>▶</button>
+        <button className="down" aria-label={lang === "en" ? "Move down" : lang === "es" ? "Mover abajo" : "Mover para baixo"} onPointerDown={(event) => startTouchMovement(event, "s")} onPointerUp={(event) => stopTouchMovement(event, "s")} onPointerCancel={(event) => stopTouchMovement(event, "s")} onClick={() => movePlayer(0, 24, "down")}>▼</button>
       </div>
 
       {openMemory && <MemoryModal memory={openMemory} lang={lang} age={ageStage} unlocked={unlocked.includes(openMemory.id)} onClose={() => setOpenMemory(null)} onFavorite={() => toggle(openMemory.id, setFavorites)} favorite={favorites.includes(openMemory.id)} t={t} />}
-      {inventoryOpen && <Inventory lang={lang} t={t} memories={orderedMemories} unlocked={unlocked} favorites={favorites} hidden={hidden} jaoUnlocked={jaoUnlocked} onClose={() => setInventoryOpen(false)} onOpen={reveal} onFavorite={(id) => toggle(id, setFavorites)} onHide={(id) => toggle(id, setHidden)} onMove={reorder} onPrint={() => window.print()} onShare={share} onRevealAll={revealAll} />}
+      {inventoryOpen && <Inventory lang={lang} t={t} memories={orderedMemories} unlocked={unlocked} favorites={favorites} hidden={hidden} jaoUnlocked={jaoUnlocked} onClose={() => setInventoryOpen(false)} onOpen={(memory) => { setInventoryOpen(false); reveal(memory); }} onFavorite={(id) => toggle(id, setFavorites)} onHide={(id) => toggle(id, setHidden)} onMove={reorder} onPrint={() => window.print()} onShare={share} onRevealAll={revealAll} />}
       {mapOpen && <WorldMap lang={lang} t={t} explored={explored} pos={pos} unlocked={unlocked} bossDefeated={bossDefeated} collectedPoems={collectedPoems} onClose={() => setMapOpen(false)} />}
       {openDialogue && <DialogueModal npc={openDialogue} lang={lang} index={dialogueIndex} onAdvance={advanceDialogue} onClose={() => { setOpenDialogue(null); setDialogueIndex(0); }} />}
       {battleOpen && <BattleModal lang={lang} hp={bossHp} playerHp={playerHp} round={battleRound} onAction={battleAction} onClose={() => setBattleOpen(false)} />}
       {computerOpen && <ComputerModal lang={lang} poems={POEMS} collected={collectedPoems} jaoUnlocked={jaoUnlocked} bossDefeated={bossDefeated} onRead={(poem) => { setComputerOpen(false); setOpenPoem(poem); }} onClose={() => setComputerOpen(false)} />}
       {openPoem && <PoemModal poem={openPoem} lang={lang} onClose={() => setOpenPoem(null)} />}
-      {toast && <div className="toast">✦ {toast}</div>}
+      {toast && <div className="toast" role="status" aria-live="polite">✦ {toast}</div>}
 
       <PrintSheet lang={lang} items={selectedForPrint} />
     </main>
@@ -807,36 +924,36 @@ function MemoryModal({ memory, lang, age, onClose, onFavorite, favorite, t }: { 
     <article className="memory-modal enhanced-memory-modal">
       <button className="modal-close" onClick={onClose} aria-label={t.close}>×</button>
       <SceneStage structure={landmark?.id} cast={age} />
-      <div className="memory-scene-bottom"><Portrait cast={age} /><div className="memory-scene-copy"><div className="memory-year">MEMORY // {memory.id === "future" ? t.current : memory.year}</div><p className="memory-category">{memory.category.toUpperCase()}</p><h2 id="memory-title">{memory.title[lang]}</h2><h3>{memory.subtitle[lang]}</h3><p>{memory.body[lang]}</p><div className="modal-actions"><button className={favorite ? "fav active" : "fav"} onClick={onFavorite}>★ {t.favorite}</button>{memory.link && <a href={memory.link} target="_blank" rel="noreferrer">↗ {memory.linkLabel}</a>}</div></div></div>
+      <div className="memory-scene-bottom"><Portrait cast={age} /><div className="memory-scene-copy"><div className="memory-year">MEMORY // {memory.id === "future" ? t.current : memory.year}</div><p className="memory-category">{memory.category.toUpperCase()}</p><h2 id="memory-title">{memory.title[lang]}</h2><h3>{memory.subtitle[lang]}</h3><p>{memory.body[lang]}</p><div className="modal-actions"><button className={favorite ? "fav active" : "fav"} onClick={onFavorite} aria-pressed={favorite}>★ {t.favorite}</button>{memory.link && <a href={memory.link} target="_blank" rel="noopener noreferrer">↗ {memory.linkLabel}</a>}</div></div></div>
     </article>
   </div>;
 }
 
 function Inventory({ lang, t, memories, unlocked, favorites, hidden, jaoUnlocked, onClose, onOpen, onFavorite, onHide, onMove, onPrint, onShare, onRevealAll }: { lang: Lang; t: Record<string, string>; memories: Memory[]; unlocked: string[]; favorites: string[]; hidden: string[]; jaoUnlocked: boolean; onClose: () => void; onOpen: (m: Memory) => void; onFavorite: (id: string) => void; onHide: (id: string) => void; onMove: (id: string, d: -1 | 1) => void; onPrint: () => void; onShare: () => void; onRevealAll: () => void }) {
-  return <div className="inventory-backdrop" role="dialog" aria-modal="true"><aside className="inventory-panel">
-    <header><div><small>PORTFOLIO BUILDER</small><h2>{t.inventory}</h2><p>{unlocked.length}/{memories.length} {t.discovered}</p></div><button onClick={onClose}>×</button></header>
+  return <div className="inventory-backdrop" role="dialog" aria-modal="true" aria-labelledby="inventory-title" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><aside className="inventory-panel">
+    <header><div><small>PORTFOLIO BUILDER</small><h2 id="inventory-title">{t.inventory}</h2><p>{unlocked.length}/{memories.length} {t.discovered}</p></div><button onClick={onClose} aria-label={t.close}>×</button></header>
     <div className="inventory-list">
       {jaoUnlocked && <article className="achievement-row"><span className="achievement-token">♫</span><span><small>{posthumousText[lang].unlocked}</small><strong>{posthumousText[lang].title}</strong><em>{posthumousText[lang].badge}</em></span></article>}
       {memories.map((m, index) => unlocked.includes(m.id) ? <article key={m.id} className={hidden.includes(m.id) ? "memory-row is-hidden" : "memory-row"}>
         <button className="row-main" onClick={() => onOpen(m)}><span className="row-icon" style={spriteStyle(m.assetIndex)}><i>{m.icon}</i></span><span><small>{m.year}</small><strong>{m.title[lang]}</strong></span></button>
-        <div className="row-tools"><button className={favorites.includes(m.id) ? "active" : ""} onClick={() => onFavorite(m.id)} title={t.favorite}>★</button><button onClick={() => onHide(m.id)} title={hidden.includes(m.id) ? t.show : t.hide}>{hidden.includes(m.id) ? "◉" : "⊘"}</button><button onClick={() => onMove(m.id, -1)} disabled={index === 0} title={t.up}>↑</button><button onClick={() => onMove(m.id, 1)} title={t.down}>↓</button></div>
-      </article> : <article key={m.id} className="memory-row locked-row"><span className="row-icon">?</span><span><small>????</small><strong>Memória não descoberta</strong></span></article>)}
+        <div className="row-tools"><button className={favorites.includes(m.id) ? "active" : ""} onClick={() => onFavorite(m.id)} title={t.favorite} aria-label={t.favorite} aria-pressed={favorites.includes(m.id)}>★</button><button onClick={() => onHide(m.id)} title={hidden.includes(m.id) ? t.show : t.hide} aria-label={hidden.includes(m.id) ? t.show : t.hide} aria-pressed={hidden.includes(m.id)}>{hidden.includes(m.id) ? "◉" : "⊘"}</button><button onClick={() => onMove(m.id, -1)} disabled={index === 0} title={t.up} aria-label={t.up}>↑</button><button onClick={() => onMove(m.id, 1)} disabled={index === memories.length - 1} title={t.down} aria-label={t.down}>↓</button></div>
+      </article> : <article key={m.id} className="memory-row locked-row"><span className="row-icon">?</span><span><small>????</small><strong>{lang === "en" ? "Undiscovered memory" : lang === "es" ? "Memoria no descubierta" : "Memória não descoberta"}</strong></span></article>)}
     </div>
     <footer><button className="subtle" onClick={onRevealAll}>{t.all}</button><button className="subtle" onClick={onShare}>↗ {t.share}</button><button className="primary small" onClick={onPrint}>▤ {t.print}</button></footer>
   </aside></div>;
 }
 
-function QuickPortfolio({ lang, setLang, onJourney, t, jaoUnlocked }: { lang: Lang; setLang: (l: Lang) => void; onJourney: () => void; t: Record<string, string>; jaoUnlocked: boolean }) {
+function QuickPortfolio({ lang, setLang, onJourney, t, jaoUnlocked, reducedMotion }: { lang: Lang; setLang: (l: Lang) => void; onJourney: () => void; t: Record<string, string>; jaoUnlocked: boolean; reducedMotion: boolean }) {
   const qt = quickText[lang];
-  return <main className="quick-page">
-    <nav className="quick-nav"><div className="brand"><span className="brand-rune">D</span><span>ADRYEL.LUIS</span></div><div className="quick-links"><a href="#profile">{t.profile}</a><a href="#projects">{t.projects}</a><a href="#skills">{t.skills}</a><a href="#contact">{t.contact}</a></div><div className="language-switch compact">{(["pt", "en", "es"] as Lang[]).map((code) => <button key={code} className={lang === code ? "active" : ""} onClick={() => setLang(code)}>{code.toUpperCase()}</button>)}</div></nav>
+  return <main className={`quick-page ${reducedMotion ? "reduced" : ""}`}>
+    <nav className="quick-nav" aria-label={lang === "en" ? "Main navigation" : lang === "es" ? "Navegación principal" : "Navegação principal"}><div className="brand"><span className="brand-rune">D</span><span>ADRYEL.LUIS</span></div><div className="quick-links"><a href="#profile">{t.profile}</a><a href="#projects">{t.projects}</a><a href="#skills">{t.skills}</a><a href="#contact">{t.contact}</a></div><div className="language-switch compact">{(["pt", "en", "es"] as Lang[]).map((code) => <button key={code} className={lang === code ? "active" : ""} aria-pressed={lang === code} aria-label={code === "pt" ? "Português" : code === "en" ? "English" : "Español"} onClick={() => setLang(code)}>{code.toUpperCase()}</button>)}</div></nav>
     <section className="quick-hero" id="profile"><div><p className="kicker">{qt.kicker}</p><h1>{qt.heroTop}<br /><em>{qt.heroEm}</em></h1><p>{qt.bio}</p><div className="hero-actions"><a className="primary" href="/Curriculo_Adryel_Luis_Rodrigues.pdf" download>↓ {qt.cv}</a><a className="ghost" href="#projects">{qt.viewProjects}</a><button className="ghost" onClick={onJourney}>◈ {t.journey}</button></div></div><div className="hero-console"><div className="console-top"><span /><span /><span /><b>dry.profile</b></div><pre><i>const</i> dry = {'{'}{`\n`}  focus: <q>&quot;internship&quot;</q>,{`\n`}  areas: [<q>&quot;full stack&quot;</q>, <q>&quot;support&quot;</q>],{`\n`}  traits: [<q>&quot;curious&quot;</q>, <q>&quot;explorer&quot;</q>],{`\n`}  status: <strong>&quot;ready_to_build&quot;</strong>{`\n`}{'}'};</pre><div className="console-status"><span /> {qt.status}</div></div></section>
     <section className="quick-stats"><div><strong>2007</strong><span>{qt.stats[0]}</span></div><div><strong>4</strong><span>{qt.stats[1]}</span></div><div><strong>3</strong><span>{qt.stats[2]}</span></div><div><strong>∞</strong><span>{qt.stats[3]}</span></div></section>
     {jaoUnlocked && <aside className="quick-achievement"><span>♫</span><div><small>{posthumousText[lang].unlocked}</small><strong>{posthumousText[lang].title}</strong><p>{posthumousText[lang].body}</p></div></aside>}
 
     <section className="quick-section journey-section"><div className="section-heading"><span>01</span><div><p>{t.timeline}</p><h2>{qt.timelineA}<br />{qt.timelineB}</h2></div></div><div className="timeline-list">{memories.filter((m) => ["origins", "joaquim", "etec", "fatec", "future"].includes(m.id)).map((m) => <article key={m.id}><time>{m.id === "future" ? t.current : m.year}</time><div><h3>{m.title[lang]}</h3><p>{m.subtitle[lang]}</p></div></article>)}</div></section>
 
-    <section className="quick-section projects-section" id="projects"><div className="section-heading"><span>02</span><div><p>{t.projects}</p><h2>{qt.projectsA}<br />{qt.projectsB}</h2></div></div><div className="project-grid">{projects.map((p) => <a key={p.name} href={p.href} target="_blank" rel="noreferrer" className="project-card"><span className="project-number">{p.mark}</span><div className="project-orb">{p.name.slice(0, 1)}</div><p>{p.role[lang]}</p><h3>{p.name}</h3><small>{p.stack}</small><b>{qt.explore} ↗</b></a>)}</div></section>
+    <section className="quick-section projects-section" id="projects"><div className="section-heading"><span>02</span><div><p>{t.projects}</p><h2>{qt.projectsA}<br />{qt.projectsB}</h2></div></div><div className="project-grid">{projects.map((p) => <a key={p.name} href={p.href} target="_blank" rel="noopener noreferrer" className="project-card"><span className="project-number">{p.mark}</span><div className="project-orb">{p.name.slice(0, 1)}</div><p>{p.role[lang]}</p><h3>{p.name}</h3><small>{p.stack}</small><b>{qt.explore} ↗</b></a>)}</div></section>
 
     <section className="quick-section skills-section" id="skills"><div className="section-heading"><span>03</span><div><p>{t.skills}</p><h2>{qt.skillsA}<br />{qt.skillsB}</h2></div></div><div className="skill-columns">{Object.entries(skills).map(([level, items]) => <article key={level}><h3>{skillLevelNames[lang][level]}</h3><div>{items.map((skill) => <span key={skill}>{skillNames[lang][skill] || skill}</span>)}</div></article>)}</div><div className="languages"><b>{lang === "en" ? "LANGUAGES" : "IDIOMAS"}</b><span>Português <i>{lang === "en" ? "Fluent" : lang === "es" ? "Fluido" : "Fluente"}</i></span><span>English <i>{lang === "en" ? "Advanced" : lang === "es" ? "Avanzado" : "Avançado"}</i></span><span>Español <i>{lang === "en" ? "Basic" : "Básico"}</i></span></div></section>
 
@@ -844,7 +961,7 @@ function QuickPortfolio({ lang, setLang, onJourney, t, jaoUnlocked }: { lang: La
 
     <section className="quick-section certificate-section"><div className="section-heading"><span>05</span><div><p>{t.certificates}</p><h2>{qt.certificatesA}<br />{qt.certificatesB}</h2></div></div><div className="locked-grid">{[1, 2, 3].map((n) => <article key={n}><span>▣</span><b>{t.locked}</b><small>SLOT {String(n).padStart(2, "0")}</small></article>)}</div></section>
 
-    <footer className="contact-section" id="contact"><p className="kicker">{t.contact.toUpperCase()}</p><h2>{qt.contactA}<br />{qt.contactB} <em>{qt.contactEm}</em></h2><div className="contact-actions"><a className="primary" href="mailto:adryel.luis.r@gmail.com">✉ {qt.email}</a><a className="ghost" href="https://wa.me/5512987037110" target="_blank" rel="noreferrer">◉ WHATSAPP</a></div><div className="contact-meta"><a href="mailto:adryel.luis.r@gmail.com">adryel.luis.r@gmail.com</a><a href="tel:+5512987037110">+55 (12) 98703-7110</a><a href="https://www.instagram.com/adryel.leo.r/" target="_blank" rel="noreferrer">@adryel.leo.r ↗</a></div><small>ADRYEL LUÍS RODRIGUES • ROSEIRA, SP • 2026</small></footer>
+    <footer className="contact-section" id="contact"><p className="kicker">{t.contact.toUpperCase()}</p><h2>{qt.contactA}<br />{qt.contactB} <em>{qt.contactEm}</em></h2><div className="contact-actions"><a className="primary" href="mailto:adryel.luis.r@gmail.com">✉ {qt.email}</a><a className="ghost" href="https://wa.me/5512987037110" target="_blank" rel="noopener noreferrer">◉ WHATSAPP</a></div><div className="contact-meta"><a href="mailto:adryel.luis.r@gmail.com">adryel.luis.r@gmail.com</a><a href="tel:+5512987037110">+55 (12) 98703-7110</a><a href="https://github.com/BatatitaX" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="https://www.instagram.com/adryel.leo.r/" target="_blank" rel="noopener noreferrer">@adryel.leo.r ↗</a></div><small>ADRYEL LUÍS RODRIGUES • ROSEIRA, SP • 2026</small></footer>
   </main>;
 }
 

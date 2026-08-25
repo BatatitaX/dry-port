@@ -169,7 +169,7 @@ export function Portrait({ cast, className = "" }: { cast: CastId; className?: s
 
 export function NpcSprite({ id, x, y, defeated = false }: { id: NpcId; x: number; y: number; defeated?: boolean }) {
   const npc = NPCS.find((item) => item.id === id)!;
-  return <div className={`world-npc npc-${id} ${defeated ? "npc-defeated" : ""}`} style={{ left: x, top: y, zIndex: Math.round(y) }} aria-label={npc.name}>
+  return <div className={`world-npc npc-${id} ${defeated ? "npc-defeated" : ""}`} style={{ left: x, top: y, zIndex: Math.round(y) }} role="img" aria-label={npc.name}>
     <span className="npc-ground-shadow" />
     <span className="npc-character-sprite" />
     {id === "jao" && <span className="npc-music-notes" aria-hidden="true">♪</span>}
@@ -180,10 +180,10 @@ export function NpcSprite({ id, x, y, defeated = false }: { id: NpcId; x: number
 
 export function SceneStage({ npc, structure, cast = "dry" }: { npc?: NpcId; structure?: string; cast?: CastId }) {
   return <div className={`conversation-scene ${npc ? `scene-${npc}` : "scene-memory"}`} aria-label="Cena vista por trás do personagem">
-    <img className="scene-ground" src="/world/terrain/world-base.png" alt="" />
-    <img className="scene-tree scene-tree-left" src="/world/scenery/tree.png" alt="" />
-    <img className="scene-tree scene-tree-right" src={npc === "jao" ? "/world/scenery/purple-tree.png" : "/world/scenery/bush.png"} alt="" />
-    {structure && <img className="scene-building" src={`/world/structures/${structure}.png`} alt="" />}
+    <img className="scene-ground" src="/world/terrain/world-base.png" alt="" decoding="async" />
+    <img className="scene-tree scene-tree-left" src="/world/scenery/tree.png" alt="" decoding="async" />
+    <img className="scene-tree scene-tree-right" src={npc === "jao" ? "/world/scenery/purple-tree.png" : "/world/scenery/bush.png"} alt="" decoding="async" />
+    {structure && <img className="scene-building" src={`/world/structures/${structure}.png`} alt="" decoding="async" />}
     {npc && <span className={`scene-far-person scene-person-${npc}`} />}
     <span className={`scene-player-back scene-player-${cast}`} />
     <span className="scene-caption">DRY // POV</span>
@@ -196,7 +196,7 @@ export function DialogueModal({ npc, lang, index, onAdvance, onClose }: { npc: N
   if (!line) return null;
   return <div className="story-backdrop" role="dialog" aria-modal="true" aria-labelledby="dialogue-speaker">
     <article className={`story-window story-${npc}`}>
-      <button className="story-close" onClick={onClose} aria-label="Fechar"><HudIcon name="close" /></button>
+      <button className="story-close" onClick={onClose} aria-label={lang === "en" ? "Close" : lang === "es" ? "Cerrar" : "Fechar"}><HudIcon name="close" /></button>
       <SceneStage npc={npc} />
       <div className="story-bottom">
         <Portrait cast={line.cast} />
@@ -211,19 +211,19 @@ export function DialogueModal({ npc, lang, index, onAdvance, onClose }: { npc: N
 export function BattleModal({ lang, hp, playerHp, round, onAction, onClose }: { lang: GameLang; hp: number; playerHp: number; round: number; onAction: (move: "inspect" | "fix" | "run") => void; onClose: () => void }) {
   const copy = lang === "en" ? { title: "PYTHON // FINAL ERROR", hint: "Inspect the failure, correct the logic and execute the solution.", inspect: "01 · INSPECT", fix: "02 · CORRECT", run: "03 · EXECUTE", player: "DRY", enemy: "ERROR" } : lang === "es" ? { title: "PYTHON // ERROR FINAL", hint: "Observa el fallo, corrige la lógica y ejecuta la solución.", inspect: "01 · OBSERVAR", fix: "02 · CORREGIR", run: "03 · EJECUTAR", player: "DRY", enemy: "ERROR" } : { title: "PYTHON // ERRO FINAL", hint: "Observe a falha, corrija a lógica e execute a solução.", inspect: "01 · OBSERVAR", fix: "02 · CORRIGIR", run: "03 · EXECUTAR", player: "DRY", enemy: "ERRO" };
   return <div className="story-backdrop battle-backdrop" role="dialog" aria-modal="true" aria-labelledby="battle-title"><article className="battle-window">
-    <button className="story-close" onClick={onClose} aria-label="Fechar"><HudIcon name="close" /></button>
+    <button className="story-close" onClick={onClose} aria-label={lang === "en" ? "Close" : lang === "es" ? "Cerrar" : "Fechar"}><HudIcon name="close" /></button>
     <header><small>BOSS ENCOUNTER</small><h2 id="battle-title">{copy.title}</h2><p>{copy.hint}</p></header>
     <div className="battle-arena"><Portrait cast="dry" className="battle-portrait" /><span className="battle-versus">VS</span><Portrait cast="python" className="battle-portrait" /></div>
-    <div className="battle-health"><div><strong>{copy.player}</strong><span><i style={{ width: `${Math.max(playerHp, 0)}%` }} /></span><b>{Math.max(playerHp, 0)}</b></div><div><strong>{copy.enemy}</strong><span><i className="enemy-health" style={{ width: `${Math.max(hp, 0)}%` }} /></span><b>{Math.max(hp, 0)}</b></div></div>
+    <div className="battle-health"><div><strong>{copy.player}</strong><span role="progressbar" aria-label={copy.player} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.max(playerHp, 0)}><i style={{ width: `${Math.max(playerHp, 0)}%` }} /></span><b>{Math.max(playerHp, 0)}</b></div><div><strong>{copy.enemy}</strong><span role="progressbar" aria-label={copy.enemy} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.max(hp, 0)}><i className="enemy-health" style={{ width: `${Math.max(hp, 0)}%` }} /></span><b>{Math.max(hp, 0)}</b></div></div>
     <div className="battle-actions"><button className={round === 0 ? "suggested" : ""} onClick={() => onAction("inspect")}>{copy.inspect}</button><button className={round === 1 ? "suggested" : ""} onClick={() => onAction("fix")}>{copy.fix}</button><button className={round >= 2 ? "suggested" : ""} onClick={() => onAction("run")}>{copy.run}</button></div>
   </article></div>;
 }
 
 export function PoemModal({ poem, lang, onClose }: { poem: Poem; lang: GameLang; onClose: () => void }) {
-  return <div className="story-backdrop" role="dialog" aria-modal="true"><article className="poem-window"><button className="story-close" onClick={onClose} aria-label="Fechar"><HudIcon name="close" /></button><small>{lang === "en" ? "RECOVERED MEMORY" : lang === "es" ? "MEMORIA RECUPERADA" : "MEMÓRIA RECUPERADA"}</small><h2>{poem.title[lang]}</h2><div className="poem-rule" /><p>{poem.body[lang]}</p><button className="primary small" onClick={onClose}>{lang === "en" ? "Save to archive" : lang === "es" ? "Guardar en archivo" : "Guardar no arquivo"}</button></article></div>;
+  return <div className="story-backdrop" role="dialog" aria-modal="true" aria-labelledby="poem-title"><article className="poem-window"><button className="story-close" onClick={onClose} aria-label={lang === "en" ? "Close" : lang === "es" ? "Cerrar" : "Fechar"}><HudIcon name="close" /></button><small>{lang === "en" ? "RECOVERED MEMORY" : lang === "es" ? "MEMORIA RECUPERADA" : "MEMÓRIA RECUPERADA"}</small><h2 id="poem-title">{poem.title[lang]}</h2><div className="poem-rule" /><p>{poem.body[lang]}</p><button className="primary small" onClick={onClose}>{lang === "en" ? "Save to archive" : lang === "es" ? "Guardar en archivo" : "Guardar no arquivo"}</button></article></div>;
 }
 
 export function ComputerModal({ lang, poems, collected, jaoUnlocked, bossDefeated, onRead, onClose }: { lang: GameLang; poems: Poem[]; collected: string[]; jaoUnlocked: boolean; bossDefeated: boolean; onRead: (poem: Poem) => void; onClose: () => void }) {
   const copy = lang === "en" ? { title: "MEMORY DATABASE", subtitle: "Personal archive", poems: "Recovered poems", empty: "Defeat Python to reveal forgotten pages across the map.", missing: "Explore the paths to recover new poems.", secret: "SECRET ENCOUNTER", unlocked: "Jão · Posthumous Memories", status: "SAVED LOCALLY", progress: "recovered" } : lang === "es" ? { title: "BANCO DE RECUERDOS", subtitle: "Archivo personal", poems: "Poemas recuperados", empty: "Derrota a Python para revelar las páginas olvidadas del mapa.", missing: "Explora los senderos para recuperar nuevos poemas.", secret: "ENCUENTRO SECRETO", unlocked: "Jão · Memorias Póstumas", status: "GUARDADO LOCALMENTE", progress: "recuperados" } : { title: "BANCO DE MEMÓRIAS", subtitle: "Arquivo pessoal", poems: "Poemas recuperados", empty: "Derrote Python para revelar os papéis esquecidos pelo mapa.", missing: "Explore os caminhos para recuperar novos poemas.", secret: "ENCONTRO SECRETO", unlocked: "Jão · Memórias Póstumas", status: "SALVO NESTE DISPOSITIVO", progress: "recuperados" };
-  return <div className="story-backdrop" role="dialog" aria-modal="true"><article className="computer-window"><header><div><small>{copy.subtitle}</small><h2>{copy.title}</h2></div><button className="computer-close" onClick={onClose} aria-label="Fechar"><HudIcon name="close" /></button></header><div className="computer-status"><span />{copy.status}<b>{collected.length}/{poems.length} {copy.progress}</b></div><section><h3>{copy.poems}</h3>{!collected.length && <p className="computer-empty">{bossDefeated ? copy.missing : copy.empty}</p>}<div className="computer-files">{poems.filter((poem) => collected.includes(poem.id)).map((poem, index) => <button key={poem.id} onClick={() => onRead(poem)}><HudIcon name="paper" /><span><small>POEMA_{String(index + 1).padStart(2, "0")}.TXT</small><strong>{poem.title[lang]}</strong></span><b>↗</b></button>)}</div></section>{jaoUnlocked && <section className="computer-secret"><h3>{copy.secret}</h3><div><Portrait cast="jao" /><span><strong>{copy.unlocked}</strong><small>{lang === "en" ? "Found at the end of the art trail." : lang === "es" ? "Encontrado al final del camino del arte." : "Encontrado no fim do caminho das artes."}</small></span></div></section>}</article></div>;
+  return <div className="story-backdrop" role="dialog" aria-modal="true" aria-labelledby="computer-title"><article className="computer-window"><header><div><small>{copy.subtitle}</small><h2 id="computer-title">{copy.title}</h2></div><button className="computer-close" onClick={onClose} aria-label={lang === "en" ? "Close" : lang === "es" ? "Cerrar" : "Fechar"}><HudIcon name="close" /></button></header><div className="computer-status"><span />{copy.status}<b>{collected.length}/{poems.length} {copy.progress}</b></div><section><h3>{copy.poems}</h3>{!collected.length && <p className="computer-empty">{bossDefeated ? copy.missing : copy.empty}</p>}<div className="computer-files">{poems.filter((poem) => collected.includes(poem.id)).map((poem, index) => <button key={poem.id} onClick={() => onRead(poem)}><HudIcon name="paper" /><span><small>POEMA_{String(index + 1).padStart(2, "0")}.TXT</small><strong>{poem.title[lang]}</strong></span><b>↗</b></button>)}</div></section>{jaoUnlocked && <section className="computer-secret"><h3>{copy.secret}</h3><div><Portrait cast="jao" /><span><strong>{copy.unlocked}</strong><small>{lang === "en" ? "Found at the end of the art trail." : lang === "es" ? "Encontrado al final del camino del arte." : "Encontrado no fim do caminho das artes."}</small></span></div></section>}</article></div>;
 }

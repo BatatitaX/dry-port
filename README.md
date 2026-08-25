@@ -22,12 +22,33 @@ O progresso, os encontros e os poemas ficam salvos no navegador do visitante.
 
 ## Gerar a versão de produção
 
+O projeto mantém dois modos de publicação independentes.
+
+### Vercel / Next.js
+
+O arquivo `vercel.json` já configura automaticamente:
+
+- Framework: `Next.js`
+- Diretório raiz: `./`
+- Instalação: `npm ci`
+- Build: `npx next build`
+- Diretório de saída: automático
+- Variáveis de ambiente: nenhuma
+
+Conecte o repositório ao Vercel e publique a branch `main`. O progresso continua
+sendo salvo no navegador de cada visitante. Os arquivos exclusivos de
+Cloudflare/Vinext são desconsiderados pela checagem TypeScript do Next.js.
+
+### Cloudflare Worker / Vinext
+
 ```bash
 npm run build
 npm run start
 ```
 
-O build validado é gerado em `dist/`. Para publicar futuramente, o projeto pode ser colocado em um repositório Git e conectado a uma hospedagem compatível com aplicações Cloudflare Worker/Vinext. A hospedagem deve usar `npm run build` como comando de build e preservar todo o conteúdo de `public/`.
+Esse build alternativo é gerado em `dist/`. Hospedagens compatíveis com
+Cloudflare Worker/Vinext devem usar `npm run build` e preservar todo o conteúdo
+de `public/`. Esse comando não deve substituir o build do Vercel.
 
 ## Estrutura principal
 
@@ -44,11 +65,12 @@ O build validado é gerado em `dist/`. Para publicar futuramente, o projeto pode
 
 ## Controles
 
-- `WASD`: movimentar
+- `WASD` ou setas do teclado: movimentar
 - `Shift`: correr
 - `E` ou `Enter`: conversar, entrar em uma construção, recolher poemas ou usar o computador
 - `M`: abrir o mapa global
-- Mobile: direcional virtual e botão de interação
+- `Esc`: fechar a janela aberta
+- Mobile: direcional virtual com movimentação contínua ao manter pressionado
 
 O mouse não movimenta nem teleporta o personagem. A água, os personagens e o
 terreno fora dos caminhos possuem colisão; o rio só pode ser cruzado pela ponte.
@@ -73,6 +95,8 @@ chão em qualquer direção.
 
 - `npm run dev`: desenvolvimento local
 - `npm run lint`: análise do código
+- `npm run test:audit`: verifica imagens, traduções, caminhos, metadados e deploy
+- `npm test`: auditoria, build de produção e validação do HTML publicado
 - `npm run build`: build de produção e validação
 - `npm run validate:artifact`: valida novamente um build existente
 

@@ -21,6 +21,8 @@ button, a, input { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { color: inherit; }
 a { color: inherit; text-decoration: none; }
+:is(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.intro-preferences input:focus-visible + .switch { outline: 2px solid var(--green); outline-offset: 3px; }
 ::selection { background: var(--violet); color: white; }
 
 .intro { min-height: 100svh; overflow: hidden; position: relative; display: grid; place-items: center; padding: 110px 24px 88px; background: radial-gradient(circle at 50% 28%, #18342c 0, #0c1919 33%, #050a0b 72%); isolation: isolate; }
@@ -127,7 +129,7 @@ input:checked + .switch::after { left: 16px; background: var(--green); }
 .global-road { position:absolute; z-index:1; left:0; top:38%; width:100%; height:36%; background:#c9aa70; border-block:6px solid #57723f; }
 .global-stop { position:absolute; z-index:2; top:50%; width:20px; height:20px; transform:translate(-50%,-50%); background:#173d2b; border:4px solid #e3ca76; box-shadow:0 4px 0 rgba(0,0,0,.2); }
 .global-stop i { position:absolute; left:50%; top:-22px; transform:translateX(-50%); color:#eff2dd; font:800 8px/1 var(--font-geist-mono); font-style:normal; }
-.fog-grid { position: absolute; z-index: 4; inset: 0; display: grid; grid-template-columns: repeat(20, 1fr); grid-template-rows: 1fr; pointer-events: none; }
+.fog-grid { position: absolute; z-index: 4; inset: 0; display: grid; grid-template-columns: repeat(20, 1fr); grid-template-rows: repeat(4, 1fr); pointer-events: none; }
 .fog-grid span { background: rgba(1,5,4,.93); box-shadow: inset 0 0 22px rgba(0,0,0,.75); transition: opacity .25s; }
 .fog-grid span.explored { opacity: .08; }
 .global-marker { position: absolute; z-index: 5; width: 10px; height: 10px; transform: translate(-50%, -50%) rotate(45deg); background: var(--gold); border: 2px solid #0b120e; box-shadow: 0 0 0 1px rgba(232,198,106,.7); }
@@ -277,6 +279,11 @@ input:checked + .switch::after { left: 16px; background: var(--green); }
 @keyframes tokenSpin { to { transform: rotate(360deg); } }
 .reduced *, .reduced *::before, .reduced *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; }
 
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}
+
 @media (max-height: 820px) {
   .world-map-modal { width: min(900px, 92vw); padding: 12px; }
   .world-map-modal header { min-height: 50px; padding-bottom: 9px; }
@@ -288,7 +295,7 @@ input:checked + .switch::after { left: 16px; background: var(--green); }
   .map-caption { left: 10px; right: 10px; bottom: 10px; }.map-caption span:nth-child(2) { display: none; }
   .hotspot-label { max-width: 115px; font-size: 7px; }.hotspot-ring { width: 32px; height: 32px; }
   .dpad { position: fixed; z-index: 45; right: 18px; bottom: 54px; width: 136px; height: 136px; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); gap: 3px; opacity: .86; }
-  .dpad button { border: 1px solid rgba(255,255,255,.2); background: rgba(4,10,8,.85); }.dpad .up{grid-area:1/2}.dpad .left{grid-area:2/1}.dpad .center{grid-area:2/2;color:var(--green);border-color:var(--green)}.dpad .right{grid-area:2/3}.dpad .down{grid-area:3/2}
+  .dpad button { border: 1px solid rgba(255,255,255,.2); background: rgba(4,10,8,.85); touch-action: none; user-select: none; }.dpad .up{grid-area:1/2}.dpad .left{grid-area:2/1}.dpad .center{grid-area:2/2;color:var(--green);border-color:var(--green)}.dpad .right{grid-area:2/3}.dpad .down{grid-area:3/2}
   .nearby { bottom: 18px; }
   .world-map-modal { padding: 10px; }.world-map-modal > p { font-size: 8px; }.global-marker { width: 8px; height: 8px; }
   .quick-nav { grid-template-columns: 1fr auto; }.quick-links { display: none; }
@@ -428,10 +435,20 @@ input:checked + .switch::after { left: 16px; background: var(--green); }
 }
 
 @media (max-width: 560px) {
-  .quest-box { max-width: 190px; }.quest-box strong { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .quest-box { max-width: min(38vw, 160px); }.quest-box > div { min-width: 0; }.quest-box strong { max-width: min(24vw, 104px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hud-actions { gap: 3px; }.hud-actions > button { width: 36px; padding-inline: 8px; }.hud-actions > button:nth-child(4) { width: 36px; }.hud-actions > button:nth-child(4) > span { display: none; }
+  .hud-actions > button:first-child { display: flex; }
   .story-backdrop { padding: 10px; }.conversation-scene { height: 190px; }.story-bottom { padding: 15px 12px 17px; grid-template-columns: 70px 1fr; gap: 10px; }.story-bottom .portrait-frame, .memory-scene-bottom .portrait-frame { width: 70px; height: 89px; }.story-copy h2 { font-size: 21px; }.story-next { font-size: 8px; }
   .enhanced-memory-modal .conversation-scene { height: 170px; }.memory-scene-bottom { gap: 12px; padding: 16px 13px; }.memory-scene-copy > p:not(.memory-category) { font-size: 11px; line-height: 1.55; }.memory-scene-copy h2 { font-size: 23px; }.memory-scene-copy .modal-actions button, .memory-scene-copy .modal-actions a { font-size: 8px; padding: 9px 8px; }
   .battle-window { padding: 20px 15px; }.battle-arena { gap: 15px; }.battle-actions { grid-template-columns: 1fr; }.battle-actions button { min-height: 37px; }
   .poem-window { padding: 37px 22px 29px; }.poem-window h2 { font-size: 29px; }.poem-window > p { font-size: 16px; }.computer-window { padding: 16px; }.computer-window > header h2 { font-size: 20px; }
+}
+
+@media (max-width: 380px) {
+  .hud-actions > button:nth-child(5) { display: none; }
+}
+
+@media (max-height: 700px) {
+  .game-shell { min-height: 100svh; }
+  .dpad { bottom: max(18px, env(safe-area-inset-bottom)); }
 }
