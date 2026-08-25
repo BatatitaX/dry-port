@@ -10,6 +10,7 @@ import {
   ComputerModal,
   DIALOGUES,
   DialogueModal,
+  EvolutionModal,
   HudIcon,
   NPCS,
   NpcSprite,
@@ -19,10 +20,12 @@ import {
   Portrait,
   RIVER,
   SceneStage,
+  type AgeStage,
   type CastId,
   type NpcId,
   type Poem,
 } from "./game-extras";
+import { movementVector, stableFacing, walkFrameAt, type MovementKey } from "./movement";
 
 type Lang = "pt" | "en" | "es";
 type Direction = "down" | "left" | "right" | "up";
@@ -325,16 +328,16 @@ const PLAYER_RADIUS = 12;
 type Landmark = { id: string; memoryId: string; x: number; kind: string; glyph: string; width: number };
 
 const LANDMARKS: Landmark[] = [
-  { id: "observatory", memoryId: "origins", x: 360, kind: "observatory", glyph: "✦", width: 286 },
-  { id: "village-school", memoryId: "joaquim", x: 920, kind: "school", glyph: "⌁", width: 330 },
-  { id: "art-pavilion", memoryId: "art", x: 1480, kind: "art", glyph: "✧", width: 310 },
-  { id: "design-studio", memoryId: "design", x: 2040, kind: "design", glyph: "◫", width: 292 },
-  { id: "etec-academy", memoryId: "etec", x: 2600, kind: "academy", glyph: "⌘", width: 306 },
-  { id: "mente-conservatory", memoryId: "mente", x: 3160, kind: "mente", glyph: "▤", width: 290 },
-  { id: "prever-station", memoryId: "prever", x: 3720, kind: "prever", glyph: "◈", width: 330 },
-  { id: "runiverse-guild", memoryId: "runiverse", x: 4280, kind: "runiverse", glyph: "◆", width: 306 },
-  { id: "fatec-citadel", memoryId: "fatec", x: 4840, kind: "fatec", glyph: "△", width: 316 },
-  { id: "future-portal", memoryId: "future", x: 5520, kind: "future", glyph: "⬡", width: 286 },
+  { id: "observatory", memoryId: "origins", x: 360, kind: "observatory", glyph: "✦", width: 202 },
+  { id: "village-school", memoryId: "joaquim", x: 920, kind: "school", glyph: "⌁", width: 210 },
+  { id: "art-pavilion", memoryId: "art", x: 1480, kind: "art", glyph: "✧", width: 204 },
+  { id: "design-studio", memoryId: "design", x: 2040, kind: "design", glyph: "◫", width: 198 },
+  { id: "etec-academy", memoryId: "etec", x: 2600, kind: "academy", glyph: "⌘", width: 210 },
+  { id: "mente-conservatory", memoryId: "mente", x: 3160, kind: "mente", glyph: "▤", width: 202 },
+  { id: "prever-station", memoryId: "prever", x: 3720, kind: "prever", glyph: "◈", width: 210 },
+  { id: "runiverse-guild", memoryId: "runiverse", x: 4280, kind: "runiverse", glyph: "◆", width: 204 },
+  { id: "fatec-citadel", memoryId: "fatec", x: 4840, kind: "fatec", glyph: "△", width: 210 },
+  { id: "future-portal", memoryId: "future", x: 5520, kind: "future", glyph: "⬡", width: 202 },
 ];
 
 const WORLD_MEMORIES: Memory[] = LANDMARKS.map((landmark) => {
@@ -342,7 +345,9 @@ const WORLD_MEMORIES: Memory[] = LANDMARKS.map((landmark) => {
   return { ...memory, x: landmark.x, y: PATH_TOP + 18 };
 });
 
-type SceneryKind = "tree" | "purple-tree" | "bush" | "flowers" | "rocks" | "fence" | "sign" | "lamp";
+type SceneryKind = "tree" | "purple-tree" | "bush" | "flowers" | "rocks" | "fence" | "sign" | "lamp"
+  | "bench" | "chicken" | "clover" | "cow" | "crates" | "crops" | "fallen-leaves"
+  | "grass-tuft" | "pond" | "stump" | "wildflowers";
 type SceneryItem = { x: number; y: number; kind: SceneryKind; width: number; label?: string };
 
 const SCENERY: SceneryItem[] = [
@@ -355,18 +360,52 @@ const SCENERY: SceneryItem[] = [
   { x: 2380, y: 632, kind: "bush", width: 88 }, { x: 2815, y: 620, kind: "tree", width: 112 },
   { x: 2910, y: 642, kind: "fence", width: 136 }, { x: 3000, y: 640, kind: "flowers", width: 92 },
   { x: 3385, y: 635, kind: "flowers", width: 94 }, { x: 3460, y: 626, kind: "bush", width: 86 },
-  { x: 3518, y: 631, kind: "lamp", width: 58 }, { x: 3935, y: 630, kind: "lamp", width: 58 },
+  { x: 3518, y: 631, kind: "lamp", width: 38 }, { x: 3935, y: 630, kind: "lamp", width: 38 },
   { x: 4000, y: 640, kind: "rocks", width: 84 }, { x: 4068, y: 620, kind: "purple-tree", width: 116 },
   { x: 4490, y: 635, kind: "purple-tree", width: 112 }, { x: 4585, y: 640, kind: "flowers", width: 90 },
   { x: 4650, y: 640, kind: "fence", width: 132 }, { x: 5160, y: 622, kind: "tree", width: 112 },
-  { x: 5260, y: 640, kind: "rocks", width: 82 }, { x: 5325, y: 630, kind: "lamp", width: 58 },
+  { x: 5260, y: 640, kind: "rocks", width: 82 }, { x: 5325, y: 630, kind: "lamp", width: 38 },
   { x: 5740, y: 630, kind: "purple-tree", width: 116 }, { x: 5830, y: 640, kind: "flowers", width: 92 },
   { x: 420, y: 1020, kind: "flowers", width: 88 }, { x: 980, y: 1018, kind: "rocks", width: 78 },
   { x: 1540, y: 1024, kind: "flowers", width: 92 }, { x: 2100, y: 1018, kind: "bush", width: 82 },
   { x: 2660, y: 1023, kind: "rocks", width: 82 }, { x: 3220, y: 1018, kind: "flowers", width: 90 },
   { x: 3780, y: 1018, kind: "bush", width: 82 }, { x: 4340, y: 1022, kind: "rocks", width: 82 },
   { x: 4900, y: 1018, kind: "flowers", width: 90 }, { x: 5460, y: 1020, kind: "bush", width: 84 },
+  { x: 230, y: 990, kind: "clover", width: 30 }, { x: 530, y: 1040, kind: "bench", width: 76 },
+  { x: 700, y: 1000, kind: "wildflowers", width: 40 }, { x: 1085, y: 1060, kind: "crops", width: 100 },
+  { x: 1190, y: 1010, kind: "chicken", width: 34 }, { x: 1380, y: 1055, kind: "grass-tuft", width: 32 },
+  { x: 1585, y: 1020, kind: "stump", width: 77 }, { x: 1705, y: 1070, kind: "wildflowers", width: 42 },
+  { x: 1900, y: 1110, kind: "pond", width: 140 }, { x: 2075, y: 1020, kind: "fallen-leaves", width: 39 },
+  { x: 2230, y: 1025, kind: "clover", width: 32 }, { x: 2420, y: 1080, kind: "bench", width: 74 },
+  { x: 2520, y: 1020, kind: "crates", width: 63 }, { x: 2750, y: 1080, kind: "cow", width: 69 },
+  { x: 2850, y: 1035, kind: "wildflowers", width: 43 }, { x: 3060, y: 1070, kind: "grass-tuft", width: 33 },
+  { x: 3295, y: 1030, kind: "stump", width: 75 }, { x: 3405, y: 1060, kind: "chicken", width: 33 },
+  { x: 3630, y: 1020, kind: "crops", width: 103 }, { x: 3880, y: 1035, kind: "clover", width: 31 },
+  { x: 4140, y: 1085, kind: "pond", width: 130 }, { x: 4395, y: 1050, kind: "bench", width: 74 },
+  { x: 4510, y: 1020, kind: "fallen-leaves", width: 42 }, { x: 4760, y: 1050, kind: "cow", width: 70 },
+  { x: 5000, y: 1070, kind: "crates", width: 61 }, { x: 5200, y: 1020, kind: "wildflowers", width: 42 },
+  { x: 5390, y: 1050, kind: "grass-tuft", width: 32 }, { x: 5650, y: 1010, kind: "chicken", width: 33 },
+  { x: 5750, y: 1100, kind: "crops", width: 98 }, { x: 5880, y: 1020, kind: "clover", width: 30 },
+  { x: 210, y: 600, kind: "wildflowers", width: 37 }, { x: 535, y: 610, kind: "grass-tuft", width: 28 },
+  { x: 1060, y: 605, kind: "clover", width: 28 }, { x: 1590, y: 615, kind: "fallen-leaves", width: 37 },
+  { x: 2120, y: 608, kind: "wildflowers", width: 38 }, { x: 2700, y: 605, kind: "grass-tuft", width: 28 },
+  { x: 3240, y: 605, kind: "clover", width: 28 }, { x: 3800, y: 610, kind: "wildflowers", width: 39 },
+  { x: 4360, y: 608, kind: "fallen-leaves", width: 37 }, { x: 4930, y: 610, kind: "grass-tuft", width: 28 },
+  { x: 5580, y: 610, kind: "wildflowers", width: 37 },
 ];
+
+const EVOLUTION_QUESTS: Record<Exclude<AgeStage, "adult">, { memories: string[]; guide: NpcId; title: Record<Lang, string>; hint: Record<Lang, string> }> = {
+  baby: {
+    memories: ["origins", "joaquim"], guide: "nilo",
+    title: { pt: "Crescer: primeiros passos", en: "Grow up: first steps", es: "Crecer: primeros pasos" },
+    hint: { pt: "Descubra suas origens, visite a escola e converse com Nilo.", en: "Discover your origins, visit the school and talk to Nilo.", es: "Descubre tus orígenes, visita la escuela y habla con Nilo." },
+  },
+  teen: {
+    memories: ["art", "design", "etec"], guide: "luna",
+    title: { pt: "Crescer: encontre seu caminho", en: "Grow up: find your path", es: "Crecer: encuentra tu camino" },
+    hint: { pt: "Explore arte, design e ETEC; converse com Luna.", en: "Explore art, design and ETEC; talk to Luna.", es: "Explora arte, diseño y ETEC; habla con Luna." },
+  },
+};
 
 const inRect = (p: { x: number; y: number }, rect: { x: number; y: number; width: number; height: number }, padding = 0) =>
   p.x >= rect.x + padding && p.x <= rect.x + rect.width - padding &&
@@ -374,11 +413,17 @@ const inRect = (p: { x: number; y: number }, rect: { x: number; y: number; width
 
 const isWalkable = (p: { x: number; y: number }, bossDefeated = false) => {
   if (p.x < PLAYER_RADIUS || p.x > WORLD.width - PLAYER_RADIUS || p.y < PLAYER_RADIUS || p.y > WORLD.height - PLAYER_RADIUS) return false;
-  const onPath = PATH_ZONES.some((zone) => inRect(p, zone, zone.id === "main" ? PLAYER_RADIUS : 5));
-  const onEntrance = LANDMARKS.some((landmark) => Math.abs(p.x - landmark.x) <= 40 && p.y >= 395 && p.y <= PATH_TOP + 24);
-  if (!onPath && !onEntrance) return false;
+  const hitsBuilding = LANDMARKS.some((landmark) => Math.abs(p.x - landmark.x) < landmark.width * .41 && p.y > 132 && p.y < 342);
+  if (hitsBuilding) return false;
+  const hitsScenery = SCENERY.some((item) => {
+    if (!["tree", "purple-tree", "bush", "rocks", "fence", "pond", "stump", "crates"].includes(item.kind)) return false;
+    const anchorY = item.y - 220;
+    const radius = item.kind === "pond" ? item.width * .31 : Math.min(34, item.width * .18);
+    return Math.hypot(p.x - item.x, p.y - anchorY) < radius;
+  });
+  if (hitsScenery) return false;
   if (inRect(p, RIVER) && !inRect(p, BRIDGE, 2)) return false;
-  if (!bossDefeated && p.x > 3475 && p.y < 700) return false;
+  if (!bossDefeated && p.x > 3475) return false;
   return !NPCS.some((npc) => !(npc.id === "python" && bossDefeated) && Math.hypot(p.x - npc.x, p.y - npc.y) < 17);
 };
 
@@ -414,6 +459,8 @@ export default function Home() {
   const [moving, setMoving] = useState(false);
   const [running, setRunning] = useState(false);
   const [walkFrame, setWalkFrame] = useState(0);
+  const [ageStage, setAgeStage] = useState<AgeStage>("baby");
+  const [evolutionNotice, setEvolutionNotice] = useState<Exclude<AgeStage, "baby"> | null>(null);
   const [viewport, setViewport] = useState({ width: 1280, height: 720 });
   const [explored, setExplored] = useState<string[]>([fogKey(START_POS.x, START_POS.y)]);
   const [mapOpen, setMapOpen] = useState(false);
@@ -438,6 +485,7 @@ export default function Home() {
   const [toast, setToast] = useState("");
   const mapRef = useRef<HTMLDivElement>(null);
   const pressedKeys = useRef(new Set<string>());
+  const directionalKeyOrder = useRef<MovementKey[]>([]);
   const hydrated = useRef(false);
   const t = ui[lang];
 
@@ -481,6 +529,10 @@ export default function Home() {
             isWalkable(saved.pos, Boolean(saved.bossDefeated)) ? saved.pos : START_POS;
           setPos(savedPosition);
           setUnlocked(savedIds(saved.unlocked));
+          setAgeStage(saved.ageStage === "teen" || saved.ageStage === "adult"
+            ? saved.ageStage
+            : savedIds(saved.unlocked).includes("etec") ? "adult"
+              : savedIds(saved.unlocked).includes("joaquim") && Array.isArray(saved.spokenNpcs) && saved.spokenNpcs.includes("nilo") ? "teen" : "baby");
           setFavorites(savedIds(saved.favorites));
           setHidden(savedIds(saved.hidden));
           setOrder(Array.from(new Set([...savedIds(saved.order), ...memories.map((memory) => memory.id)])));
@@ -513,13 +565,26 @@ export default function Home() {
     if (!hydrated.current) return;
     const timeout = window.setTimeout(() => {
       try {
-        localStorage.setItem("dry-portfolio-save-v3", JSON.stringify({ lang, sound, reducedMotion, pos, unlocked, favorites, hidden, order, explored, jaoUnlocked, spokenNpcs, bossDefeated, collectedPoems }));
+        localStorage.setItem("dry-portfolio-save-v3", JSON.stringify({ lang, sound, reducedMotion, pos, unlocked, favorites, hidden, order, explored, jaoUnlocked, spokenNpcs, bossDefeated, collectedPoems, ageStage }));
       } catch {
         // Browsers can block local storage or exhaust its quota; gameplay remains usable.
       }
     }, 220);
     return () => window.clearTimeout(timeout);
-  }, [lang, sound, reducedMotion, pos, unlocked, favorites, hidden, order, explored, jaoUnlocked, spokenNpcs, bossDefeated, collectedPoems]);
+  }, [lang, sound, reducedMotion, pos, unlocked, favorites, hidden, order, explored, jaoUnlocked, spokenNpcs, bossDefeated, collectedPoems, ageStage]);
+
+  useEffect(() => {
+    if (!hydrated.current || phase !== "game" || ageStage === "adult") return;
+    const mission = EVOLUTION_QUESTS[ageStage];
+    if (!mission.memories.every((memoryId) => unlocked.includes(memoryId)) || !spokenNpcs.includes(mission.guide)) return;
+    const nextStage: Exclude<AgeStage, "baby"> = ageStage === "baby" ? "teen" : "adult";
+    const frame = window.requestAnimationFrame(() => {
+      setAgeStage(nextStage);
+      setEvolutionNotice(nextStage);
+      ping();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [ageStage, phase, ping, spokenNpcs, unlocked]);
 
   const reveal = useCallback((memory: Memory) => {
     setUnlocked((items) => items.includes(memory.id) ? items : [...items, memory.id]);
@@ -584,14 +649,24 @@ export default function Home() {
   }, [pos]);
 
   useEffect(() => {
-    if (phase !== "game" || openMemory || inventoryOpen || mapOpen || openDialogue || battleOpen || computerOpen || openPoem) return;
+    if (phase !== "game" || openMemory || inventoryOpen || mapOpen || openDialogue || battleOpen || computerOpen || openPoem || evolutionNotice) return;
     const keysForEffect = pressedKeys.current;
+    const orderForEffect = directionalKeyOrder.current;
     const arrowKeys: Record<string, string> = { arrowup: "w", arrowleft: "a", arrowdown: "s", arrowright: "d" };
     const movementKey = (key: string) => arrowKeys[key] ?? key;
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       const mappedKey = movementKey(key);
-      if (["w", "a", "s", "d"].includes(mappedKey)) { event.preventDefault(); keysForEffect.add(mappedKey); }
+      if (["w", "a", "s", "d"].includes(mappedKey)) {
+        event.preventDefault();
+        if (!keysForEffect.has(mappedKey)) {
+          const directionKey = mappedKey as MovementKey;
+          const oldIndex = orderForEffect.indexOf(directionKey);
+          if (oldIndex >= 0) orderForEffect.splice(oldIndex, 1);
+          orderForEffect.push(directionKey);
+        }
+        keysForEffect.add(mappedKey);
+      }
       if (key === "shift") { event.preventDefault(); keysForEffect.add(key); }
       if ((key === "e" || key === "enter") && !event.repeat) {
         if (key === "enter" && event.target instanceof HTMLElement && event.target.closest("button, a, input, select, textarea")) return;
@@ -599,22 +674,24 @@ export default function Home() {
       }
       if (key === "m") { event.preventDefault(); setMapOpen(true); }
     };
-    const onKeyUp = (event: KeyboardEvent) => keysForEffect.delete(movementKey(event.key.toLowerCase()));
-    const onWindowBlur = () => keysForEffect.clear();
+    const onKeyUp = (event: KeyboardEvent) => {
+      const key = movementKey(event.key.toLowerCase());
+      keysForEffect.delete(key);
+      const index = orderForEffect.indexOf(key as MovementKey);
+      if (index >= 0) orderForEffect.splice(index, 1);
+    };
+    const onWindowBlur = () => { keysForEffect.clear(); orderForEffect.length = 0; };
     window.addEventListener("keydown", onKeyDown); window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onWindowBlur);
     let frameId = 0; let previous = performance.now();
     const animate = (now: number) => {
       const delta = Math.min((now - previous) / 1000, 0.035); previous = now;
       const keys = keysForEffect;
-      let dx = (keys.has("d") ? 1 : 0) - (keys.has("a") ? 1 : 0);
-      let dy = (keys.has("s") ? 1 : 0) - (keys.has("w") ? 1 : 0);
-      const active = dx !== 0 || dy !== 0;
+      const { x: dx, y: dy, active } = movementVector(keys);
       const sprinting = active && keys.has("shift");
       if (active) {
-        const length = Math.hypot(dx, dy); dx /= length; dy /= length;
-        if (Math.abs(dx) > Math.abs(dy)) setDirection(dx > 0 ? "right" : "left"); else setDirection(dy > 0 ? "down" : "up");
-        setWalkFrame(Math.floor(now / (sprinting ? 88 : 180)) % 3);
+        setDirection((current) => stableFacing(keys, orderForEffect, current));
+        setWalkFrame(walkFrameAt(now, sprinting));
         setPos((current) => {
           const step = WALK_SPEED * (sprinting ? 2 : 1) * delta;
           let next = current;
@@ -632,13 +709,13 @@ export default function Home() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onWindowBlur);
-      keysForEffect.clear(); cancelAnimationFrame(frameId); setMoving(false); setRunning(false);
+      keysForEffect.clear(); orderForEffect.length = 0; cancelAnimationFrame(frameId); setMoving(false); setRunning(false);
     };
-  }, [phase, openMemory, inventoryOpen, mapOpen, openDialogue, battleOpen, computerOpen, openPoem, bossDefeated]);
+  }, [phase, openMemory, inventoryOpen, mapOpen, openDialogue, battleOpen, computerOpen, openPoem, bossDefeated, evolutionNotice]);
 
   const resetGame = () => {
     setPos(START_POS); setExplored([fogKey(START_POS.x, START_POS.y)]); setUnlocked([]); setFavorites([]); setHidden([]); setOrder(memories.map((m) => m.id)); setJaoUnlocked(false);
-    setSpokenNpcs([]); setBossDefeated(false); setCollectedPoems([]); setBossHp(100); setPlayerHp(100); setBattleRound(0);
+    setSpokenNpcs([]); setBossDefeated(false); setCollectedPoems([]); setBossHp(100); setPlayerHp(100); setBattleRound(0); setAgeStage("baby"); setEvolutionNotice(null);
     try {
       localStorage.removeItem("dry-portfolio-save-v2");
       localStorage.removeItem("dry-portfolio-save-v3");
@@ -657,10 +734,16 @@ export default function Home() {
   const startTouchMovement = (event: React.PointerEvent<HTMLButtonElement>, key: string) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     pressedKeys.current.add(key);
+    const order = directionalKeyOrder.current;
+    const previous = order.indexOf(key as MovementKey);
+    if (previous >= 0) order.splice(previous, 1);
+    order.push(key as MovementKey);
   };
 
   const stopTouchMovement = (event: React.PointerEvent<HTMLButtonElement>, key: string) => {
     pressedKeys.current.delete(key);
+    const index = directionalKeyOrder.current.indexOf(key as MovementKey);
+    if (index >= 0) directionalKeyOrder.current.splice(index, 1);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
@@ -668,10 +751,19 @@ export default function Home() {
   const cameraY = Math.round(clamp(pos.y - viewport.height * 0.57, 0, Math.max(0, WORLD.height - viewport.height)));
   const directionRow: Record<Direction, number> = { down: 0, left: 1, right: 2, up: 3 };
   const playerSprite: React.CSSProperties = {
-    backgroundPosition: `${(moving ? walkFrame : 0) * 50}% ${directionRow[direction] * 33.333}%`,
+    backgroundImage: `url('/characters/dry-${ageStage}.png')`,
+    backgroundSize: "192px 384px",
+    backgroundPosition: `-${(moving ? walkFrame : 0) * 64}px -${directionRow[direction] * 96}px`,
   };
-  const ageStage: CastId = unlocked.includes("etec") ? "dry" : unlocked.includes("joaquim") ? "teen" : unlocked.includes("origins") ? "child" : "baby";
-  const questTitle = bossDefeated
+  const agePortrait: CastId = ageStage === "adult" ? "dry" : ageStage;
+  const evolutionQuest = ageStage === "adult" ? null : EVOLUTION_QUESTS[ageStage];
+  const evolutionProgress = evolutionQuest
+    ? evolutionQuest.memories.filter((memoryId) => unlocked.includes(memoryId)).length + Number(spokenNpcs.includes(evolutionQuest.guide))
+    : 0;
+  const evolutionTotal = evolutionQuest ? evolutionQuest.memories.length + 1 : 0;
+  const questTitle = evolutionQuest
+    ? evolutionQuest.title[lang]
+    : bossDefeated
     ? collectedPoems.length === POEMS.length
       ? (lang === "en" ? "Every verse recovered" : lang === "es" ? "Todos los versos recuperados" : "Todos os versos recuperados")
       : (lang === "en" ? "Recover forgotten poems" : lang === "es" ? "Recupera los poemas olvidados" : "Recupere os poemas perdidos")
@@ -747,7 +839,7 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (!openMemory && !inventoryOpen && !mapOpen && !openDialogue && !battleOpen && !computerOpen && !openPoem) return;
+    if (!openMemory && !inventoryOpen && !mapOpen && !openDialogue && !battleOpen && !computerOpen && !openPoem && !evolutionNotice) return;
 
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -765,7 +857,8 @@ export default function Home() {
     const handleDialogKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        if (openPoem) setOpenPoem(null);
+        if (evolutionNotice) setEvolutionNotice(null);
+        else if (openPoem) setOpenPoem(null);
         else if (mapOpen) setMapOpen(false);
         else if (computerOpen) setComputerOpen(false);
         else if (battleOpen) setBattleOpen(false);
@@ -790,7 +883,7 @@ export default function Home() {
       window.removeEventListener("keydown", handleDialogKey);
       if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
     };
-  }, [openMemory, inventoryOpen, mapOpen, openDialogue, battleOpen, computerOpen, openPoem]);
+  }, [openMemory, inventoryOpen, mapOpen, openDialogue, battleOpen, computerOpen, openPoem, evolutionNotice]);
 
   if (phase === "intro") return (
     <main className={`intro ${reducedMotion ? "reduced" : ""}`}>
@@ -823,7 +916,7 @@ export default function Home() {
   return (
     <main className={`game-shell ${reducedMotion ? "reduced" : ""}`}>
       <header className="game-hud">
-        <div className="quest-box"><span className="quest-gem"><HudIcon name={bossDefeated ? "paper" : "memory"} /></span><div><small>{t.mission}</small><strong>{questTitle}</strong><em>{bossDefeated ? `${collectedPoems.length}/${POEMS.length} ${lang === "en" ? "poems recovered" : lang === "es" ? "poemas recuperados" : "poemas recuperados"}` : `${unlocked.length}/${memories.length} ${t.discovered}`}</em></div></div>
+        <div className="quest-box" title={evolutionQuest?.hint[lang]}><span className="quest-gem"><HudIcon name={bossDefeated ? "paper" : "memory"} /></span><div><small>{t.mission}</small><strong>{questTitle}</strong><em>{evolutionQuest ? `${evolutionProgress}/${evolutionTotal} ${lang === "en" ? "objectives completed" : lang === "es" ? "objetivos completados" : "objetivos concluídos"}` : bossDefeated ? `${collectedPoems.length}/${POEMS.length} ${lang === "en" ? "poems recovered" : lang === "es" ? "poemas recuperados" : "poemas recuperados"}` : `${unlocked.length}/${memories.length} ${t.discovered}`}</em></div></div>
         <div className="hud-actions">
           <button onClick={() => setPhase("quick")} aria-label={t.portfolio}><HudIcon name="portfolio" /> <span>{t.portfolio}</span></button>
           <button onClick={() => setMapOpen(true)} aria-label={t.openMap}><HudIcon name="map" /> <span>{t.openMap}</span></button>
@@ -840,8 +933,7 @@ export default function Home() {
             <img className="world-base-asset" src="/world/terrain/world-base.png" alt="" aria-hidden="true" decoding="async" fetchPriority="high" />
             <div className="river-water" style={{ left: RIVER.x, top: RIVER.y, width: RIVER.width, height: RIVER.height }} aria-hidden="true"><span className="river-lily river-lily-one" /><span className="river-lily river-lily-two" /></div>
             {PATH_ZONES.filter((zone) => zone.id !== "main").map((zone) => <div key={zone.id} className={`branch-path branch-${zone.id}`} style={{ left: zone.x, top: zone.y, width: zone.width, height: zone.height }} aria-hidden="true" />)}
-            {LANDMARKS.map((landmark) => <div key={`door-${landmark.id}`} className="building-door-path" style={{ left: landmark.x - 28 }} aria-hidden="true" />)}
-            <div className="single-wooden-bridge" style={{ left: BRIDGE.x, top: BRIDGE.y, width: BRIDGE.width, height: BRIDGE.height }} aria-label="Ponte do caminho das artes" />
+            <div className="single-wooden-bridge" style={{ left: BRIDGE.x, top: BRIDGE.y, width: BRIDGE.width, height: BRIDGE.height }} aria-label="Ponte do caminho das artes"><img src="/world/scenery/bridge.png" alt="" decoding="async" /></div>
             <div className="path-arrow start-arrow">INÍCIO <span>→</span></div>
             <div className="path-arrow end-arrow"><span>→</span> PRÓXIMA MISSÃO</div>
             {SCENERY.map((item, index) => <div key={`${item.x}-${item.y}-${index}`} className={`scenery scenery-${item.kind}`} style={{ left: item.x, top: item.y - 220, width: item.width, zIndex: Math.round(item.y - 220) }} aria-hidden="true">
@@ -859,9 +951,9 @@ export default function Home() {
             ))}
             {!bossDefeated && <div className="python-barrier" style={{ left: 3478, top: PATH_TOP + 8, height: PATH_BOTTOM - PATH_TOP - 16 }} aria-hidden="true" />}
             {NPCS.map((npc) => <NpcSprite key={npc.id} id={npc.id} x={npc.x} y={npc.y} defeated={npc.id === "python" && bossDefeated} />)}
-            {bossDefeated && POEMS.filter((poem) => !collectedPoems.includes(poem.id)).map((poem) => <div key={poem.id} className="world-poem-paper" style={{ left: poem.x, top: poem.y, zIndex: Math.round(poem.y) }} aria-label={poem.title[lang]}><HudIcon name="paper" /><span /></div>)}
+            {bossDefeated && POEMS.filter((poem) => !collectedPoems.includes(poem.id)).map((poem, index) => <div key={poem.id} className="world-poem-paper" style={{ left: poem.x, top: poem.y, zIndex: Math.round(poem.y), "--paper-frame": index % 6 } as React.CSSProperties} aria-label={poem.title[lang]}><span /></div>)}
             <div className="world-computer" style={{ left: COMPUTER.x, top: COMPUTER.y, zIndex: Math.round(COMPUTER.y) }} aria-label="Banco de memórias"><HudIcon name="computer" /><span>ARQUIVO</span></div>
-            <div className={`player age-${ageStage} facing-${direction} ${moving ? "is-moving" : ""} ${running ? "is-running" : ""}`} style={{ left: pos.x, top: pos.y, zIndex: Math.round(pos.y) }} aria-label="Dry"><span className="player-shadow" /><span className="player-sprite" style={playerSprite} /><b>DRY</b></div>
+            <div className={`player age-${ageStage} facing-${direction} ${moving ? "is-moving" : ""} ${running ? "is-running" : ""}`} style={{ left: Math.round(pos.x), top: Math.round(pos.y), zIndex: Math.round(pos.y) }} aria-label={`Dry · ${ageStage}`}><span className="player-shadow" /><span className="player-sprite" style={playerSprite} /><b>DRY</b></div>
           </div>
           <div className="map-vignette" />
           {(nearest?.d < 145 || (nearestNpc && nearestNpc.d < 92) || (nearestPoem && nearestPoem.d < 68) || nearComputer) && <button className="nearby" onClick={interact}>E <span>{nearestPoem && nearestPoem.d < 68 ? (lang === "en" ? "Collect poem" : lang === "es" ? "Recoger poema" : "Recolher poema") : nearestNpc && nearestNpc.d < 92 ? (lang === "en" ? "Talk" : lang === "es" ? "Hablar" : "Conversar") : nearComputer ? (lang === "en" ? "Open archive" : lang === "es" ? "Abrir archivo" : "Abrir arquivo") : t.interact}</span></button>}
@@ -877,13 +969,14 @@ export default function Home() {
         <button className="down" aria-label={lang === "en" ? "Move down" : lang === "es" ? "Mover abajo" : "Mover para baixo"} onPointerDown={(event) => startTouchMovement(event, "s")} onPointerUp={(event) => stopTouchMovement(event, "s")} onPointerCancel={(event) => stopTouchMovement(event, "s")} onClick={() => movePlayer(0, 24, "down")}>▼</button>
       </div>
 
-      {openMemory && <MemoryModal memory={openMemory} lang={lang} age={ageStage} unlocked={unlocked.includes(openMemory.id)} onClose={() => setOpenMemory(null)} onFavorite={() => toggle(openMemory.id, setFavorites)} favorite={favorites.includes(openMemory.id)} t={t} />}
+      {openMemory && <MemoryModal memory={openMemory} lang={lang} age={agePortrait} unlocked={unlocked.includes(openMemory.id)} onClose={() => setOpenMemory(null)} onFavorite={() => toggle(openMemory.id, setFavorites)} favorite={favorites.includes(openMemory.id)} t={t} />}
       {inventoryOpen && <Inventory lang={lang} t={t} memories={orderedMemories} unlocked={unlocked} favorites={favorites} hidden={hidden} jaoUnlocked={jaoUnlocked} onClose={() => setInventoryOpen(false)} onOpen={(memory) => { setInventoryOpen(false); reveal(memory); }} onFavorite={(id) => toggle(id, setFavorites)} onHide={(id) => toggle(id, setHidden)} onMove={reorder} onPrint={() => window.print()} onShare={share} onRevealAll={revealAll} />}
       {mapOpen && <WorldMap lang={lang} t={t} explored={explored} pos={pos} unlocked={unlocked} bossDefeated={bossDefeated} collectedPoems={collectedPoems} onClose={() => setMapOpen(false)} />}
       {openDialogue && <DialogueModal npc={openDialogue} lang={lang} index={dialogueIndex} onAdvance={advanceDialogue} onClose={() => { setOpenDialogue(null); setDialogueIndex(0); }} />}
       {battleOpen && <BattleModal lang={lang} hp={bossHp} playerHp={playerHp} round={battleRound} onAction={battleAction} onClose={() => setBattleOpen(false)} />}
       {computerOpen && <ComputerModal lang={lang} poems={POEMS} collected={collectedPoems} jaoUnlocked={jaoUnlocked} bossDefeated={bossDefeated} onRead={(poem) => { setComputerOpen(false); setOpenPoem(poem); }} onClose={() => setComputerOpen(false)} />}
       {openPoem && <PoemModal poem={openPoem} lang={lang} onClose={() => setOpenPoem(null)} />}
+      {evolutionNotice && <EvolutionModal stage={evolutionNotice} lang={lang} onClose={() => setEvolutionNotice(null)} />}
       {toast && <div className="toast" role="status" aria-live="polite">✦ {toast}</div>}
 
       <PrintSheet lang={lang} items={selectedForPrint} />

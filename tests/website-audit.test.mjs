@@ -13,15 +13,29 @@ test("every world structure, scenery image, portrait and résumé exists", () =>
   const sceneryKinds = new Set(Array.from(scenerySection.matchAll(/kind: "([a-z-]+)"/g), (match) => match[1]));
 
   assert.equal(structureIds.length, 10);
-  assert.equal(sceneryKinds.size, 8);
+  assert.ok(sceneryKinds.size >= 19, `Expected an expanded coherent scenery set, found ${sceneryKinds.size}`);
 
   const requiredAssets = [
     "public/Curriculo_Adryel_Luis_Rodrigues.pdf",
-    "public/dry-spritesheet-v2.png",
+    "public/characters/dry-baby.png",
+    "public/characters/dry-teen.png",
+    "public/characters/dry-adult.png",
+    "public/characters/jao.png",
+    "public/characters/nilo.png",
+    "public/characters/dry-portrait.png",
+    "public/characters/jao-portrait.png",
+    "public/characters/nilo-portrait.png",
     "public/favicon.svg",
+    "public/favicon.ico",
     "public/memory-icons.png",
+    "public/paper-poems-atlas.png",
     "public/portraits/cast-atlas.png",
     "public/world/terrain/world-base.png",
+    "public/world/terrain/path-dirt.png",
+    "public/world/terrain/water-tile.png",
+    "public/world/interiors/dialogue-jao.png",
+    "public/world/interiors/dialogue-nilo.png",
+    "public/world/scenery/bridge.png",
     ...structureIds.map((id) => `public/world/structures/${id}.png`),
     ...Array.from(sceneryKinds, (kind) => `public/world/scenery/${kind}.png`),
   ];

@@ -1,35 +1,35 @@
-# DRY — modular pixel-art assets
+# DRY — direção de arte e assets
 
-The playable world is split into independent layers so visual changes do not
-reintroduce fragile collision boxes.
+O mundo preserva a vegetação detalhada e o terreno aprovados, enquanto as
+construções e os personagens utilizam pixel art nativa em escala consistente.
 
-- `public/world/terrain/world-base.png`: continuous 5920×1024 terrain layer.
-- `public/world/structures/*.png`: ten independent transparent landmarks.
-- `public/world/scenery/*.png`: independent tree, purple tree, shrub, flowers,
-  rocks, fence, sign and lamp assets.
-- `public/dry-spritesheet-v2.png`: Dry's movement sprite sheet.
+## Cenário
 
-The player is restricted only to the straight road band. Landmarks and scenery
-sit outside that band and therefore do not need gameplay collision rectangles.
+- `public/world/terrain/world-base.png`: gramado e estrada principal contínuos.
+- `public/world/terrain/path-dirt.png`: terra pixelada das trilhas orgânicas.
+- `public/world/terrain/water-tile.png`: textura pixelada do rio.
+- `public/world/structures/*.png`: dez fachadas frontais de 96 × 96 pixels.
+- `public/world/scenery/*.png`: vegetação, cerca, poste, ponte, banco, animais,
+  plantações, lago e pequenos detalhes naturais.
+- `public/world/interiors/dialogue-jao.png`: encontro ilustrado com Jão.
+- `public/world/interiors/dialogue-nilo.png`: encontro ilustrado com Nilo.
 
-## Final terrain prompt
+## Personagens
 
-> Create one original, crisp top-down pixel-art terrain module with a calm green
-> meadow and a single perfectly straight horizontal warm dirt road. Use an
-> authentic hand-placed 16-bit look, visible square pixel clusters, a limited
-> mature natural palette and restrained grass/dirt detail. Make the left and
-> right edges repeat cleanly. Terrain only: no buildings, trees, characters,
-> text, UI, perspective, branches, blur, painterly texture or copied assets.
+Os sprites de Dry bebê, adolescente e adulto, de Nilo e de Jão usam atlas de
+96 × 192 pixels. Cada atlas possui três colunas e quatro linhas com quadros
+nativos de 32 × 48, exibidos em 2×. Os pés permanecem alinhados ao chão durante
+as trocas de idade e direção.
 
-## Final scenery prompt
+Jão utiliza sprite e retrato próprios, com cabelo loiro e identidade baseada no
+cantor brasileiro. O encontro não inclui qualquer objeto fúnebre.
 
-> Create a coherent 4×2 sprite atlas containing exactly eight separated,
-> original top-down 16-bit pixel-art objects: leafy tree, indigo-violet tree,
-> rounded shrub, flower patch, rock cluster, wooden fence, blank wooden sign and
-> short fantasy-tech lamp. Use one consistent pixel density, daylight direction
-> and restrained cozy fantasy-tech palette. Place the objects on a perfectly
-> flat chroma background with wide gutters; no overlap, text, people, animals,
-> cast shadows, blur, painterly rendering, copied assets or watermark.
+## Interface e arquivos
 
-The generated sources were cleaned, separated and exported as transparent PNGs
-before integration.
+- `app/ui-icon.tsx`: família vetorial consistente usada por todo o HUD e PC.
+- `public/memory-icons.png`: atlas nativo de 96 × 72 para memórias.
+- `public/paper-poems-atlas.png`: seis variações de papéis colecionáveis.
+- `public/characters/*-portrait.png`: portraits próprios de Dry, Nilo e Jão.
+
+Arquivos de produção não recebem sufixos de versão; o Git conserva o histórico
+de alterações.

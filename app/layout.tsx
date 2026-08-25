@@ -18,7 +18,11 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   openGraph: { title: siteTitle, description: siteDescription, siteName: "DRY // Portfólio", locale: "pt_BR", type: "website" },
   twitter: { card: "summary", title: siteTitle, description: siteDescription },
-  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
+  icons: {
+    icon: [{ url: "/favicon.ico", sizes: "any" }, { url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: "/favicon.ico",
+    apple: "/icon-192.png",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
