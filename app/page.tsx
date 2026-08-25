@@ -470,7 +470,7 @@ export default function Home() {
           const saved = JSON.parse(raw);
           const memoryIds = new Set(memories.map((memory) => memory.id));
           const savedIds = (value: unknown) => Array.isArray(value)
-            ? value.filter((item): item is string => typeof item === "string" && memoryIds.has(item))
+            ? value.filter((item: unknown): item is string => typeof item === "string" && memoryIds.has(item))
             : [];
           setHasSave(true);
           setLang(saved.lang === "en" || saved.lang === "es" ? saved.lang : "pt");
@@ -485,7 +485,7 @@ export default function Home() {
           setHidden(savedIds(saved.hidden));
           setOrder(Array.from(new Set([...savedIds(saved.order), ...memories.map((memory) => memory.id)])));
           const savedCells = Array.isArray(saved.explored) ? saved.explored : [fogKey(START_POS.x, START_POS.y)];
-          setExplored(savedCells.filter((cell): cell is string => {
+          setExplored(savedCells.filter((cell: unknown): cell is string => {
             if (typeof cell !== "string") return false;
             const [col, row] = cell.split(":").map(Number);
             return Number.isInteger(col) && Number.isInteger(row) && col >= 0 && col < FOG_COLS && row >= 0 && row < FOG_ROWS;
