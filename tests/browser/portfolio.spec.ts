@@ -1,14 +1,14 @@
 import { test, expect, type Page } from "@playwright/test";
-const SAVE_KEY = "dry-portfolio-save-v4";
+const SAVE_KEY = "dry-observatory-v1";
+const TEST_KEY = "dry-observatory-test-v1";
 async function enterGame(page: Page) {
   await page.goto("/jornada");
-  await page.getByRole("button", { name: /COMEÇAR JORNADA/ }).click();
-  await expect(page.locator(".phaser-world canvas[data-ready=true]")).toBeVisible();
-  // A rendered scene has published its starting position and completed asset loading.
-  await expect(page.getByRole("alert")).toHaveCount(0);
-  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), SAVE_KEY)).not.toBeNull();
+  await expect(page.locator(".ob-world canvas[data-ready=true]")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Encontre sua Lente", exact: true })).toBeVisible();
 }
-async function position(page: Page) { return page.evaluate(key => JSON.parse(localStorage.getItem(key)!).pos, SAVE_KEY); }
+async function progress(page: Page, key = SAVE_KEY) {
+  return page.evaluate(k => JSON.parse(localStorage.getItem(k) || "null")?.progress, key);
+}
 
 test("professional routes work independently of the game and save", async ({ page }) => {
   await page.goto("/portfolio");
@@ -23,48 +23,51 @@ test("professional routes work independently of the game and save", async ({ pag
   expect(pdf.ok()).toBeTruthy(); expect((await pdf.body()).subarray(0,4).toString()).toBe("%PDF");
 });
 
-test("invalid saves recover and keyboard movement stops on blur", async ({ page, isMobile }) => {
-  test.skip(isMobile, "Keyboard-only regression; touch is covered separately.");
-  await page.addInitScript(key => localStorage.setItem(key, 'null'), SAVE_KEY);
+
+test("direct tutorial loads with a corrupt save and pauses on blur", async ({ page }) => {
+  await page.addInitScript(key => localStorage.setItem(key, "null"), SAVE_KEY);
   await enterGame(page);
-  const initial = await position(page);
-  await page.keyboard.down("ArrowRight");
-  await expect.poll(async () => (await position(page)).x).toBeGreaterThan(initial.x+40);
+  await expect.poll(async () => (await progress(page))?.lens).toBe(false);
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
-  await page.keyboard.up("ArrowRight");
-  // Poll for a persisted snapshot after the blur and assert that it remains fixed.
-  await page.waitForTimeout(1100);
-  const stopped = await position(page);
-  await page.waitForTimeout(1100);
-  expect(await position(page)).toEqual(stopped);
+  await expect(page.getByRole("dialog", { name: "Seu jeito de jogar" })).toBeVisible();
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
 });
 
-test("map traps focus, closes on Escape, and language controls remain available", async ({ page }) => {
+test("pause keeps focus inside, languages update, and portfolio stays accessible", async ({ page }) => {
   await enterGame(page);
-  await page.getByRole("button", { name: "Abrir mapa", exact: true }).first().click();
-  const dialog = page.getByRole("dialog", { name: "Mapa da jornada" });
+  await page.getByRole("button", { name: "Pausa", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Seu jeito de jogar" });
   await expect(dialog).toBeVisible();
   await page.keyboard.press("Tab");
   expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
-  await page.keyboard.press("Escape");
-  await expect(dialog).toHaveCount(0);
   await page.getByRole("button", { name: "English", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(page.getByRole("button", { name: "Quick portfolio", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Resume", exact: true }).click();
+  await page.getByRole("link", { name: "Portfolio", exact: true }).click();
+  await expect(page).toHaveURL(/portfolio\?lang=en/);
 });
 
-test("holding touch direction moves continuously with no release jump", async ({ page, isMobile }) => {
-  test.skip(!isMobile, "Directional pad is a mobile control.");
+test("laboratory reset cannot overwrite the normal game", async ({ page }) => {
   await enterGame(page);
-  const start = await position(page);
-  const right = page.getByRole("button", { name: "Mover para a direita", exact: true });
-  const box = await right.boundingBox(); expect(box).not.toBeNull();
-  await page.mouse.move(box!.x+box!.width/2, box!.y+box!.height/2);
-  await page.mouse.down();
-  await expect.poll(async () => (await position(page)).x).toBeGreaterThan(start.x+40);
-  await page.mouse.up();
-  await page.waitForTimeout(1100);
-  const stopped=await position(page); await page.waitForTimeout(1100);
-  expect(await position(page)).toEqual(stopped);
-  await expect(page.getByRole("button", { name: "Portfólio rápido", exact: true })).toBeVisible();
+  const original = await progress(page);
+  await page.getByRole("button", { name: /Testes/, exact: false }).filter({ visible: true }).click();
+  await page.getByRole("button", { name: "Entrar no laboratório", exact: true }).click();
+  await page.getByRole("button", { name: /Testes/, exact: false }).filter({ visible: true }).click();
+  await page.getByRole("button", { name: "Drone", exact: true }).click();
+  await expect.poll(async () => (await progress(page, TEST_KEY))?.mirrors).toEqual([1, 2]);
+  expect(await progress(page)).toEqual(original);
+  await page.getByRole("button", { name: /Testes/, exact: false }).filter({ visible: true }).click();
+  await page.getByRole("button", { name: "Voltar à partida", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Encontre sua Lente", exact: true })).toBeVisible();
+});
+
+test("touch controls and actions stay visible on a narrow screen", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "Touch layout only");
+  await enterGame(page);
+  const joystick = page.getByRole("group", { name: "Mover", exact: true });
+  await expect(joystick).toBeVisible();
+  for (const name of ["Observar", "Pulso", "Esquiva", "Interagir"]) await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Portfólio", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

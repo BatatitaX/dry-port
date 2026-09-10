@@ -1,130 +1,121 @@
 # DRY // Portfólio de Adryel Luís Rodrigues
 
-Portfólio trilíngue com uma jornada jogável em pixel art, personagens interativos,
-chefe, poemas colecionáveis e uma versão profissional rápida. O projeto é
-autocontido: textos, código, mapa, sprites, portraits, poemas, ícones e currículo
-ficam dentro desta pasta.
+Portfólio profissional em português, inglês e espanhol, com uma área jogável em
+**Phaser 3.90 + TypeScript**. A primeira área do novo jogo é o Pátio do Observatório:
+um tutorial ilustrado e um laboratório independente para experimentar as mecânicas.
 
-## Requisitos
+## Abrir no computador (Windows, macOS ou Linux)
 
-- Node.js 22.13 ou superior
-- npm
+Requisitos: Node.js 22.13 ou superior e npm.
 
-## Rodar no computador
-
-```bash
+```sh
 npm install
 npm run dev
 ```
 
-Abra o endereço informado pelo terminal, geralmente `http://localhost:5173`.
-O progresso, os encontros e os poemas ficam salvos no navegador do visitante.
+Abra o endereço mostrado pelo terminal, normalmente `http://localhost:5173`.
+O portfólio abre em `/`; para jogar, entre em `/jornada`.
+O script `dev` funciona no PowerShell e CMD: as configurações locais do Wrangler
+já são definidas no `vite.config.ts`, sem a sintaxe de variáveis exclusiva do Unix.
 
-## Gerar a versão de produção
+## Tutorial jogável
 
-O projeto mantém dois modos de publicação independentes.
+1. Vá até a Lente luminosa à esquerda e use **E** para pegá-la.
+2. Use **Q** para revelar os arcos dourados dos refletores. Aproxime-se e use **E**
+   para girar cada ponteiro até o arco correspondente. O circuito resolvido fica travado.
+3. Atravesse a faixa de energia quando apagar, use a esquiva ou siga pela rota inferior
+   e desligue a faixa no interruptor. O caminho inferior permanece acessível.
+4. Use **E** perto do drone para começar o treino. Saia do círculo marcado antes
+   do disparo. O núcleo fica aberto depois do ataque: mire e use **Pulso** três vezes.
+5. Recolha a célula com **E** e leve-a à porta do observatório para concluir.
+
+Três sinos ressonantes e um caderno de campo ficam disponíveis para exploração.
+O caderno contém texto ficcional do tutorial, não um poema atribuído ao autor.
+
+## Controles
+
+| Ação | Teclado e mouse | Toque |
+| --- | --- | --- |
+| Mover | WASD ou setas | Joystick esquerdo |
+| Observar | Q | Botão Observar |
+| Pulso | Clique na direção desejada ou F com mira assistida | Botão Pulso com mira assistida |
+| Esquiva | Espaço | Botão Esquiva |
+| Interagir | E | Botão Interagir |
+| Pausar | Esc | Botão Pausa |
+| Laboratório | T | Botão Testes |
+
+A pausa oferece idiomas, efeitos sonoros opcionais, mira assistida, modo sem dano,
+redução de animações e câmera fixa. Perder o foco pausa a simulação e limpa a entrada.
+O modo assistido preserva o puzzle e as janelas de vulnerabilidade do drone.
+
+## Laboratório
+
+Abra **Testes → Entrar no laboratório**. O modo usa um save separado da partida normal.
+É possível reiniciar os refletores, o drone ou todo o tutorial; ajustar velocidade
+(120–320 px/s) e duração da esquiva; ativar invulnerabilidade, colisões visíveis,
+câmera fixa e animação reduzida. O painel mostra FPS, intervalo médio aproximado
+por quadro e coordenadas. **Voltar à partida** restaura o progresso normal.
+Os ajustes de laboratório são temporários e não afetam a partida normal.
+
+O save versionado é local: `dry-observatory-v1` e `dry-observatory-test-v1`.
+Reabrir a página restaura objetivos e um checkpoint seguro, não um ataque em andamento.
+Saves anteriores da jornada em pixel art permanecem intactos, mas não são convertidos
+em progresso deste novo tutorial.
+
+## Produção
 
 ### Vercel / Next.js
 
-O arquivo `vercel.json` já configura automaticamente:
+`vercel.json` usa `npx next build`. Para gerar localmente:
 
-- Framework: `Next.js`
-- Diretório raiz: `./`
-- Instalação: `npm ci`
-- Build: `npx next build`
-- Diretório de saída: automático
-- Variáveis de ambiente: nenhuma
+```sh
+npm run build:next
+```
 
-Conecte o repositório ao Vercel e publique a branch `main`. O progresso continua
-sendo salvo no navegador de cada visitante. Os arquivos exclusivos de
-Cloudflare/Vinext são desconsiderados pela checagem TypeScript do Next.js.
+### Cloudflare / Vinext
 
-### Cloudflare Worker / Vinext
-
-```bash
+```sh
 npm run build
 npm run start
 ```
 
-Esse build alternativo é gerado em `dist/`. Hospedagens compatíveis com
-Cloudflare Worker/Vinext devem usar `npm run build` e preservar todo o conteúdo
-de `public/`. Esse comando não deve substituir o build do Vercel.
+O build alternativo usa Bash e gera `dist/`. No Windows, use WSL/Git Bash para esse
+build, ou o fluxo Next.js. Essa limitação não afeta `npm run dev` no PowerShell.
 
-## Estrutura principal
+## Estrutura
 
-- `app/page.tsx` e `app/portfolio/page.tsx`: entrada profissional pré-renderizada
-- `app/quick-portfolio.tsx`: apresentação profissional e contatos
-- `app/projetos/[slug]/page.tsx`: páginas dos projetos
-- `app/jornada/page.tsx` e `app/journey-client.tsx`: jornada e interfaces do jogo
-- `app/content/`: textos, traduções e contexto dos projetos
-- `app/game/world-scene.ts`: cena Phaser, câmera, renderização e entrada
-- `app/game/simulation.ts`: movimento e colisões testáveis
-- `app/game/world.ts`: mapa, cenários, missões e regras de colisão
-- `app/game/data.ts`: personagens, diálogos e poemas
-- `app/game/save.ts`: validação e migração de progresso
-- `app/game/battle.ts`: regras do combate
-- `app/game-extras.tsx`: diálogos, batalha, poemas e computador em React
-- `app/movement.ts`: direção estável e ciclo de caminhada
-- `public/`: arte original e currículo para download
+- `app/page.tsx`, `app/portfolio/`: portfólio profissional.
+- `app/projetos/[slug]/`: detalhes dos projetos.
+- `app/jornada/page.tsx`: entrada direta do novo tutorial.
+- `app/game/tutorial/model.ts`: simulação, colisões, combate, progresso e checkpoints.
+- `app/game/tutorial/scene.ts`: renderização Phaser, câmera, luz e efeitos.
+- `app/game/tutorial/tutorial-client.tsx`: interface React, áudio, toque, pausa e laboratório.
+- `app/game/tutorial/copy.ts`: textos PT/EN/ES.
+- `public/observatory/`: cenário e atlases ilustrados, gerados a partir da direção aprovada.
+- `app/journey-client.tsx` e demais módulos antigos de `app/game/`: implementação anterior
+  conservada como referência para a expansão; não é carregada pela rota nova.
 
-O jogo usa **Phaser 3.90 + TypeScript**. A engine é carregada apenas ao entrar
-na jornada; o visitante pode abrir projetos, currículo e contato diretamente.
-O save é local ao navegador, gravado periodicamente e ao sair da página.
+Phaser só é importado quando o visitante abre o jogo. A posição fica na simulação,
+e o HUD recebe snapshots no máximo dez vezes por segundo.
 
-## Controles
+## Verificação
 
-- `WASD` ou setas do teclado: movimentar
-- `Shift`: correr
-- `E` ou `Enter`: conversar, entrar em uma construção, recolher poemas ou usar o computador
-- `M`: abrir o mapa global
-- `Esc`: fechar a janela aberta
-- Mobile: direcional virtual com movimentação contínua ao manter pressionado
-
-O mouse não movimenta nem teleporta o personagem. O jogador pode explorar o
-gramado, mas construções, cenários sólidos, NPCs e água possuem colisão; o rio
-só pode ser cruzado pela ponte.
-
-## Jornada e segredos
-
-1. Comece como bebê. Descubra suas origens e visite a escola. As memórias das origens e da escola concluem a primeira missão e permitem evoluir para adolescente.
-2. Explore arte, design e ETEC; converse com Luna para concluir a segunda missão
-   e evoluir para adulto.
-3. Siga o caminho das artes, atravesse a ponte e encontre Jão escondido no fim
-   da trilha. Ele não aparece no mapa geral.
-4. Avance até Python. Para vencer a batalha, siga **observar, corrigir e executar**.
-   O modo assistido permite continuar sem vencer. Nilo está no fim da jornada.
-5. Após derrotar Python, nove papéis com poemas aparecem pelo mundo.
-6. Abra o **DRY OS**, pelo botão PC ou pelo computador na trilha tecnológica,
-   para acessar arquivos, terminal interativo, perfil e biblioteca musical.
-7. A discografia de Jão aparece no computador somente depois da conversa com ele.
-
-As fases bebê, adolescente e adulto possuem sprites próprios de 32 × 48 por
-quadro, com a mesma linha dos pés em todas as direções. Os nomes dos arquivos
-de arte não possuem sufixos de versão: o histórico pertence ao Git.
-
-## Comandos úteis
-
-- `npm run dev`: desenvolvimento local
-- `npm run lint`: análise do código
-- `npm run test:audit`: verifica artes, missões, personagens, computador, traduções e deploy
-- `npm test`: auditoria, build de produção e validação do HTML publicado
-- `npm run build`: build de produção e validação
-- `npm run validate:artifact`: valida novamente um build existente
-
-## Testes e revisão
-
-```bash
+```sh
 npm run test:audit
+npx tsc --noEmit --incremental false
 npm run build:next
-npm run build
+```
+
+A suíte cobre conclusão do tutorial, colisões e alcance, pistas do ataque, esquiva,
+checkpoint, assistências, saves inválidos, separação do laboratório e segredos.
+Também mantém os testes dos módulos anteriores usados como referência.
+
+A suíte opcional de navegador está em `tests/browser/`. Para executá-la localmente:
+
+```sh
 npx playwright install chromium
 npm run test:browser
 ```
 
-A suíte de navegador tem cenários desktop e mobile. `test:audit` inclui
-verificações comportamentais de movimento, colisões, save e combate.
-
-Veja [docs/CORRECOES.md](docs/CORRECOES.md) para alterações, validações e
-informações profissionais que ainda dependem de confirmação do autor.
-Certificados e capturas de projetos serão incluídos quando os materiais reais
-estiverem disponíveis; a página profissional não exibe slots vazios.
+Confira `docs/OBSERVATORIO.md` para escopo e limitações desta primeira área e
+`docs/CORRECOES.md` para os ajustes anteriores do portfólio e do CV.
