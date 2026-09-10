@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { copy, type Lang } from "./copy";
 import { act, DEFAULT_SETTINGS, fresh, nearby, resetChallenge, restore, SAVE_KEY, serialize, stage, TEST_SAVE_KEY, type Action, type Point, type Settings, type State } from "./model";
 import type { Bridge } from "./bridge";
+import { TutorialAudio } from "./audio";
 import "./tutorial.css";
 
 type Modal = "pause" | "lab" | "journal" | "complete" | null;
@@ -21,7 +22,7 @@ function snapshot(s: State, fps = 0) {
     x: Math.round(s.pos.x), y: Math.round(s.pos.y), dodgeReady: s.dodgeCooldown <= 0 && s.energy >= 24, pulseReady: s.pulseCooldown <= 0 && s.energy >= 12 };
 }
 export default function Tutorial() {
-  const bridge = useRef<Bridge>({ state: fresh(), settings: { ...DEFAULT_SETTINGS }, keys: new Set(), joystick: { x: 0, y: 0 }, paused: true, lang: "pt", act: () => {}, publish: () => {} });
+  const bridge = useRef<Bridge>({ state: fresh(), settings: { ...DEFAULT_SETTINGS }, keys: new Set(), joystick: { x: 0, y: 0 }, paused: true, lang: "pt", act: () => {}, publish: () => {}, feedback: () => {} });
   const [hud, setHud] = useState(() => snapshot(fresh()));
   const [lang, setLang] = useState<Lang>("pt");
   const [settings, setSettings] = useState<Settings>({ ...DEFAULT_SETTINGS });
@@ -37,7 +38,7 @@ export default function Tutorial() {
   const activeMode = useRef(false);
   const activeModal = useRef<Modal>(null);
   const engineReady = useRef(false);
-  const audio = useRef<AudioContext | null>(null);
+  const audio = useRef<TutorialAudio | null>(null);
   const stickPointer = useRef<number | null>(null);
   const saveRef = useRef(() => {});
   const t = copy[lang];
@@ -46,25 +47,10 @@ export default function Tutorial() {
   function openModal(value: Modal) {
     clearInput(); activeModal.current = value; bridge.current.paused = !!value || !engineReady.current; setModal(value);
   }
-  function sound(action: Action) {
-    if (!bridge.current.settings.sound) return;
-    try {
-      audio.current ??= new AudioContext();
-      void audio.current.resume();
-      const context = audio.current, oscillator = context.createOscillator(), volume = context.createGain();
-      const s = bridge.current.state;
-      const bellNote = [523.25, 659.25, 783.99][s.bells.at(-1) ?? 0];
-      oscillator.type = "sine"; oscillator.frequency.value = action === "pulse" ? (s.notice === "bell" || s.notice === "secret" ? bellNote : 660) : action === "interact" ? 440 : 280;
-      volume.gain.setValueAtTime(.045, context.currentTime); volume.gain.exponentialRampToValueAtTime(.001, context.currentTime + .16);
-      oscillator.connect(volume); volume.connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + .17);
-      oscillator.onended = () => { oscillator.disconnect(); volume.disconnect(); };
-    } catch { /* Audio is optional; browsers may refuse to start it. */ }
-  }
   function perform(action: Action, aim?: Point) {
     if (bridge.current.paused) return;
     const before = bridge.current.state.complete, target = nearby(bridge.current.state);
     act(bridge.current.state, action, bridge.current.settings, aim);
-    sound(action);
     setHud(snapshot(bridge.current.state));
     if (action === "interact" && target === "journal") openModal("journal");
     if (!before && bridge.current.state.complete) openModal("complete");
@@ -78,6 +64,7 @@ export default function Tutorial() {
     try { bridge.current.state = restore(localStorage.getItem(SAVE_KEY)); } catch { /* The save callback reports unavailable storage. */ }
     bridge.current.act = perform;
     bridge.current.publish = fps => setHud(snapshot(bridge.current.state, fps));
+    bridge.current.feedback = effect => { if (bridge.current.settings.sound) audio.current?.play(effect); };
     const save = () => {
       try { localStorage.setItem(activeMode.current ? TEST_SAVE_KEY : SAVE_KEY, serialize(bridge.current.state)); setSaveFailed(false); }
       catch { setSaveFailed(true); }
@@ -112,7 +99,7 @@ export default function Tutorial() {
       }, () => { bridge.current.paused = true; setFailed(true); });
     }).catch(() => { if (!cancelled) setFailed(true); });
     return () => {
-      cancelled = true; engineReady.current = false; save(); clearInterval(interval); dispose?.(); void audio.current?.close(); audio.current = null;
+      cancelled = true; engineReady.current = false; save(); clearInterval(interval); dispose?.(); audio.current?.close(); audio.current = null;
       window.removeEventListener("keydown", keydown); window.removeEventListener("keyup", keyup); window.removeEventListener("blur", blur);
       document.removeEventListener("visibilitychange", visibility); window.removeEventListener("pagehide", save);
     };
@@ -124,7 +111,7 @@ export default function Tutorial() {
 
   function setting<K extends keyof Settings>(key: K, value: Settings[K]) {
     bridge.current.settings = { ...bridge.current.settings, [key]: value }; setSettings({ ...bridge.current.settings });
-    if (key === "sound" && value) { try { audio.current ??= new AudioContext(); void audio.current.resume(); } catch {} }
+    if (key === "sound" && value) { audio.current ??= new TutorialAudio(); audio.current.unlock(); }
   }
   function switchMode() {
     saveRef.current(); activeMode.current = !activeMode.current; setPractice(activeMode.current);

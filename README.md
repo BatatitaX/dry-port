@@ -89,6 +89,8 @@ build, ou o fluxo Next.js. Essa limitação não afeta `npm run dev` no PowerShe
 - `app/jornada/page.tsx`: entrada direta do novo tutorial.
 - `app/game/tutorial/model.ts`: simulação, colisões, combate, progresso e checkpoints.
 - `app/game/tutorial/scene.ts`: renderização Phaser, câmera, luz e efeitos.
+- `app/game/tutorial/avatar.ts`: caminhada articulada, postura e ancoragem dos pés.
+- `app/game/tutorial/effects.ts` e `audio.ts`: efeitos visuais e sonoros dos eventos.
 - `app/game/tutorial/tutorial-client.tsx`: interface React, áudio, toque, pausa e laboratório.
 - `app/game/tutorial/copy.ts`: textos PT/EN/ES.
 - `public/observatory/`: cenário e atlases ilustrados, gerados a partir da direção aprovada.

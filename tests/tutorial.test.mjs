@@ -90,3 +90,20 @@ test("bells require a pulse in range and the three discoveries survive a reload"
   for (const p of BELLS) { s.pos={ x:p.x,y:p.y+120 }; advance(s,.8); act(s,"pulse",prefs,p); }
   assert.equal(s.secret,true); assert.deepEqual(restore(serialize(s)).bells.sort(),[0,1,2]);
 });
+
+test("feedback reflects accepted actions and distinguishes shield, hit and blast", () => {
+  const s = fresh();
+  act(s, "pulse", prefs); assert.equal(s.effects.length, 0);
+  solve(s); approach(s, "drone"); act(s, "interact", prefs);
+  act(s, "pulse", prefs, PLACES.drone);
+  assert.ok(s.effects.some(e => e.kind === "shield"));
+  const count = s.effectId; act(s, "pulse", prefs, PLACES.drone);
+  assert.equal(s.effectId, count, "cooldown cannot generate another muzzle flash or sound");
+  advance(s, 2, { x: 0, y: 0 }, { ...prefs, assist: true });
+  assert.ok(s.effects.some(e => e.kind === "blast"), "a missed/assisted blast still has visual feedback");
+  act(s, "pulse", prefs, PLACES.drone);
+  assert.ok(s.effects.some(e => e.kind === "hit"));
+  assert.ok(s.pulses.at(-1).from.y < s.pos.y - 45, "beam originates at the held Lens, not the feet");
+  for (let i = 0; i < 50; i++) act(s, "observe", prefs);
+  assert.ok(s.effects.length <= 32); assert.equal(restore(serialize(s)).effects.length, 0);
+});

@@ -14,11 +14,14 @@ export const GOAL = [1, 2] as const;
 export const SAVE_KEY = "dry-observatory-v1";
 export const TEST_SAVE_KEY = "dry-observatory-test-v1";
 export type Progress = { lens: boolean; mirrors: [number, number]; gateOff: boolean; droneDone: boolean; cell: boolean; complete: boolean; bells: number[]; secret: boolean };
+export type EffectKind = "pulse" | "dodge" | "observe" | "mirror" | "aligned" | "bell" | "shield" | "hit" | "droneDown" | "damage" | "collect" | "complete" | "blast" | "checkpoint";
+export type GameEffect = { id: number; kind: EffectKind; at: Point; to?: Point; detail?: number };
 export type State = Progress & {
   pos: Point; facing: Point; hp: number; energy: number; time: number; observing: boolean;
   dodge: number; dodgeCooldown: number; pulseCooldown: number; invulnerable: number;
   droneActive: boolean; droneHp: number; droneClock: number; danger: Point | null;
   notice: Notice; noticeUntil: number; pulses: { from: Point; to: Point; life: number }[];
+  effectId: number; effects: GameEffect[];
 };
 export type Settings = { speed: number; dodgeDuration: number; invincible: boolean; assist: boolean; reduced: boolean; autoAim: boolean; overview: boolean; debug: boolean; sound: boolean };
 export const DEFAULT_SETTINGS: Settings = { speed: 210, dodgeDuration: .24, invincible: false, assist: false, reduced: false, autoAim: true, overview: false, debug: false, sound: false };
@@ -28,7 +31,12 @@ export function fresh(): State {
   return { pos: { x: 740, y: 840 }, facing: { x: 0, y: -1 }, hp: 3, energy: 100, time: 0, lens: false,
     mirrors: [0, 0], gateOff: false, droneDone: false, cell: false, complete: false, bells: [], secret: false,
     observing: false, dodge: 0, dodgeCooldown: 0, pulseCooldown: 0, invulnerable: 0,
-    droneActive: false, droneHp: 3, droneClock: 0, danger: null, notice: "welcome", noticeUntil: 8, pulses: [] };
+    droneActive: false, droneHp: 3, droneClock: 0, danger: null, notice: "welcome", noticeUntil: 8, pulses: [], effectId: 0, effects: [] };
+}
+/** Bounded, transient event log: rendering/audio never determine gameplay outcomes. */
+function emit(s: State, kind: EffectKind, at: Point, detail?: number, to?: Point) {
+  s.effects.push({ id: ++s.effectId, kind, at: { ...at }, detail, to: to && { ...to } });
+  if (s.effects.length > 32) s.effects.shift();
 }
 export function progress(s: State): Progress {
   return { lens: s.lens, mirrors: [...s.mirrors], gateOff: s.gateOff, droneDone: s.droneDone,
@@ -86,20 +94,22 @@ export function act(s: State, action: Action, settings: Settings, aim?: Point) {
   if (action === "interact") {
     const t = nearby(s);
     if (!t) { notify(s, "range"); return; }
-    if (t === "lens") { s.lens = true; notify(s, "lens"); }
+    if (t === "lens") { s.lens = true; emit(s, "collect", PLACES.lens); notify(s, "lens"); }
     if (t === "mirror0" || t === "mirror1") {
       if (aligned(s)) { notify(s, "aligned"); return; }
       const i = t === "mirror0" ? 0 : 1; s.mirrors[i] = (s.mirrors[i] + 1) % 4;
+      emit(s, "mirror", { x: PLACES[t].x, y: PLACES[t].y - 62 }, i);
+      if (aligned(s)) emit(s, "aligned", PLACES.telescope);
       notify(s, aligned(s) ? "aligned" : "rotate");
     }
     if (t === "switch") { s.gateOff = !s.gateOff; notify(s, "switch"); }
     if (t === "drone" && !s.droneActive) { s.droneActive = true; s.droneClock = 0; s.droneHp = 3; notify(s, "drone"); }
-    if (t === "cell") { s.cell = true; notify(s, "cell"); }
-    if (t === "telescope") { if (s.cell) { s.complete = true; notify(s, "complete"); } else notify(s, "needCell"); }
+    if (t === "cell") { s.cell = true; emit(s, "collect", PLACES.cell); notify(s, "cell"); }
+    if (t === "telescope") { if (s.cell) { if (!s.complete) emit(s, "complete", PLACES.telescope); s.complete = true; notify(s, "complete"); } else notify(s, "needCell"); }
     if (t === "journal") notify(s, "journal");
   }
-  if (action === "observe" && s.lens) { s.observing = !s.observing; notify(s, "observe"); }
-  if (action === "dodge" && s.dodgeCooldown <= 0 && s.energy >= 24) { s.dodge = settings.dodgeDuration; s.dodgeCooldown = .8; s.energy -= 24; }
+  if (action === "observe" && s.lens) { s.observing = !s.observing; if (s.observing) emit(s, "observe", s.pos); notify(s, "observe"); }
+  if (action === "dodge" && s.dodgeCooldown <= 0 && s.energy >= 24) { s.dodge = settings.dodgeDuration; s.dodgeCooldown = .8; s.energy -= 24; emit(s, "dodge", s.pos); }
   if (action === "pulse" && s.lens && s.pulseCooldown <= 0 && s.energy >= 12) {
     s.energy -= 12; s.pulseCooldown = .32;
     const targets = [...BELLS, ...(s.droneActive ? [PLACES.drone] : [])];
@@ -109,24 +119,30 @@ export function act(s: State, action: Action, settings: Settings, aim?: Point) {
     const direction = { x: (dest.x - s.pos.x) / len, y: (dest.y - s.pos.y) / len };
     s.facing = direction;
     const end = { x: s.pos.x + direction.x * Math.min(330, len), y: s.pos.y + direction.y * Math.min(330, len) };
-    s.pulses.push({ from: { ...s.pos }, to: end, life: .2 });
+    const visualFrom = { x: s.pos.x + direction.x * 27, y: s.pos.y - 65 + direction.y * 12 };
+    let visualTo = { x: end.x, y: end.y - 60 };
     const hits = (p: Point) => { const d = distance(s.pos, p); return d < 330 && ((p.x - s.pos.x) * direction.x + (p.y - s.pos.y) * direction.y) / Math.max(d, 1) > .94; };
-    BELLS.forEach((p, i) => { if (hits(p)) { if (!s.bells.includes(i)) s.bells.push(i); notify(s, "bell"); } });
+    BELLS.forEach((p, i) => { if (hits(p)) { if (!s.bells.includes(i)) s.bells.push(i); emit(s, "bell", p, i); visualTo = { ...p }; notify(s, "bell"); } });
     if (s.bells.length === 3 && !s.secret) { s.secret = true; notify(s, "secret"); }
     if (s.droneActive && hits(PLACES.drone)) {
+      visualTo = { x: PLACES.drone.x, y: PLACES.drone.y - 60 };
       if (s.droneClock % 3.8 > 1.75) {
-        s.droneHp--; notify(s, "hit");
-        if (s.droneHp <= 0) { s.droneActive = false; s.droneDone = true; s.danger = null; notify(s, "cell"); }
-      } else notify(s, "shield");
+        s.droneHp--; emit(s, "hit", visualTo); notify(s, "hit");
+        if (s.droneHp <= 0) { s.droneActive = false; s.droneDone = true; s.danger = null; emit(s, "droneDown", visualTo); notify(s, "cell"); }
+      } else { emit(s, "shield", visualTo); notify(s, "shield"); }
     }
+    s.pulses.push({ from: visualFrom, to: visualTo, life: .2 });
+    emit(s, "pulse", visualFrom, undefined, visualTo);
   }
 }
 function hurt(s: State, settings: Settings) {
   if (s.invulnerable > 0 || s.dodge > 0 || settings.invincible || settings.assist) return;
   s.hp--; s.invulnerable = 1.3;
+  emit(s, "damage", { x: s.pos.x, y: s.pos.y - 65 });
   if (s.hp <= 0) {
     s.pos = { x: 1015, y: 830 }; s.hp = 3; s.energy = 100; s.droneActive = false; s.droneHp = 3; s.droneClock = 0; s.danger = null;
     notify(s, "checkpoint");
+    emit(s, "checkpoint", s.pos);
   }
 }
 export function tick(s: State, seconds: number, input: Point, settings: Settings) {
@@ -148,7 +164,10 @@ export function tick(s: State, seconds: number, input: Point, settings: Settings
   if (s.droneActive) {
     const before = s.droneClock % 3.8; s.droneClock += dt; const phase = s.droneClock % 3.8;
     if (s.danger === null && phase < 1.5) s.danger = { ...s.pos };
-    if (before < 1.5 && phase >= 1.5 && s.danger && distance(s.pos, s.danger) < 90) hurt(s, settings);
+    if (before < 1.5 && phase >= 1.5 && s.danger) {
+      emit(s, "blast", s.danger);
+      if (distance(s.pos, s.danger) < 90) hurt(s, settings);
+    }
     if (phase > 1.75) s.danger = null;
   }
   s.dodge = Math.max(0, s.dodge - dt);
