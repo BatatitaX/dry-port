@@ -52,23 +52,24 @@ de `public/`. Esse comando não deve substituir o build do Vercel.
 
 ## Estrutura principal
 
-- `app/page.tsx`: conteúdo, jogo, mapa global, inventário e portfólio rápido
-- `app/game-extras.tsx`: personagens, diálogos, evolução, batalha, poemas e computador
-- `app/movement.ts`: movimentação diagonal estável e ciclo de caminhada
-- `app/ui-icon.tsx`: família vetorial própria dos ícones da interface
-- `app/globals.css`: direção visual e responsividade
-- `public/world/terrain/world-base.png`: terreno principal em pixel art
-- `public/world/structures/`: dez construções frontais nativas de 96 × 96
-- `public/world/scenery/`: árvores, arbustos, flores, animais, lago, bancos e plantações
-- `public/world/interiors/`: cenas ilustradas de Nilo e Jão
-- `public/portraits/cast-atlas.png`: atlas com oito portraits padronizados
-- `public/characters/dry-baby.png`: atlas do Dry bebê, 96 × 192
-- `public/characters/dry-teen.png`: atlas do Dry adolescente, 96 × 192
-- `public/characters/dry-adult.png`: atlas do Dry adulto, 96 × 192
-- `public/characters/jao.png`: sprite original do cantor Jão
-- `public/memory-icons.png`: ícones das memórias
-- `public/paper-poems-atlas.png`: seis variações visuais de páginas colecionáveis
-- `public/Curriculo_Adryel_Luis_Rodrigues.pdf`: currículo para download
+- `app/page.tsx` e `app/portfolio/page.tsx`: entrada profissional pré-renderizada
+- `app/quick-portfolio.tsx`: apresentação profissional e contatos
+- `app/projetos/[slug]/page.tsx`: páginas dos projetos
+- `app/jornada/page.tsx` e `app/journey-client.tsx`: jornada e interfaces do jogo
+- `app/content/`: textos, traduções e contexto dos projetos
+- `app/game/world-scene.ts`: cena Phaser, câmera, renderização e entrada
+- `app/game/simulation.ts`: movimento e colisões testáveis
+- `app/game/world.ts`: mapa, cenários, missões e regras de colisão
+- `app/game/data.ts`: personagens, diálogos e poemas
+- `app/game/save.ts`: validação e migração de progresso
+- `app/game/battle.ts`: regras do combate
+- `app/game-extras.tsx`: diálogos, batalha, poemas e computador em React
+- `app/movement.ts`: direção estável e ciclo de caminhada
+- `public/`: arte original e currículo para download
+
+O jogo usa **Phaser 3.90 + TypeScript**. A engine é carregada apenas ao entrar
+na jornada; o visitante pode abrir projetos, currículo e contato diretamente.
+O save é local ao navegador, gravado periodicamente e ao sair da página.
 
 ## Controles
 
@@ -85,14 +86,13 @@ só pode ser cruzado pela ponte.
 
 ## Jornada e segredos
 
-1. Comece como bebê. Descubra suas origens, visite a escola e converse com Nilo
-   para concluir a primeira missão e evoluir para adolescente.
+1. Comece como bebê. Descubra suas origens e visite a escola. As memórias das origens e da escola concluem a primeira missão e permitem evoluir para adolescente.
 2. Explore arte, design e ETEC; converse com Luna para concluir a segunda missão
    e evoluir para adulto.
 3. Siga o caminho das artes, atravesse a ponte e encontre Jão escondido no fim
    da trilha. Ele não aparece no mapa geral.
-4. Avance até Python. Para vencer a batalha, siga a sequência **observar,
-   corrigir e executar**.
+4. Avance até Python. Para vencer a batalha, siga **observar, corrigir e executar**.
+   O modo assistido permite continuar sem vencer. Nilo está no fim da jornada.
 5. Após derrotar Python, nove papéis com poemas aparecem pelo mundo.
 6. Abra o **DRY OS**, pelo botão PC ou pelo computador na trilha tecnológica,
    para acessar arquivos, terminal interativo, perfil e biblioteca musical.
@@ -111,6 +111,20 @@ de arte não possuem sufixos de versão: o histórico pertence ao Git.
 - `npm run build`: build de produção e validação
 - `npm run validate:artifact`: valida novamente um build existente
 
-## Conteúdo que ainda será atualizado
+## Testes e revisão
 
-Os cards pretos de diplomas e certificados são placeholders intencionais. Screenshots de projetos, certificados e missões adicionais podem ser inseridos depois sem alterar a estrutura principal.
+```bash
+npm run test:audit
+npm run build:next
+npm run build
+npx playwright install chromium
+npm run test:browser
+```
+
+A suíte de navegador tem cenários desktop e mobile. `test:audit` inclui
+verificações comportamentais de movimento, colisões, save e combate.
+
+Veja [docs/CORRECOES.md](docs/CORRECOES.md) para alterações, validações e
+informações profissionais que ainda dependem de confirmação do autor.
+Certificados e capturas de projetos serão incluídos quando os materiais reais
+estiverem disponíveis; a página profissional não exibe slots vazios.

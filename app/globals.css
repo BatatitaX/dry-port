@@ -458,3 +458,34 @@ input:checked + .switch::after { left: 16px; background: var(--green); }
   .game-shell { min-height: 100svh; }
   .dpad { bottom: max(18px, env(safe-area-inset-bottom)); }
 }
+
+/* Canvas owns the game world; the accessible HUD and dialogs remain in React. */
+.phaser-world { position:absolute; inset:0; overflow:hidden; }
+.phaser-world canvas { display:block; image-rendering:pixelated; }
+.game-load-error { position:absolute; inset:20%; padding:24px; z-index:30; background:#12271f; color:#fff; }
+.game-load-error a { display:block; margin-top:16px; text-decoration:underline; }
+.dpad button { touch-action:none; }
+.hud-actions > button:first-child { display:inline-flex; }
+.hud-actions .language-switch { display:flex; }
+@media (max-width:560px) {
+  .game-hud { flex-wrap:wrap; }
+  .hud-actions { flex-wrap:wrap; justify-content:center; }
+  .hud-actions > button:first-child span { display:inline; }
+}
+@media (prefers-reduced-motion:reduce) {
+  html { scroll-behavior:auto; }
+  *, *::before, *::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; }
+}
+.case-page { max-width:960px; margin:0 auto; padding:32px 24px 80px; color:var(--text,#ebf2ed); }
+.case-page nav { display:flex; justify-content:space-between; gap:24px; margin-bottom:64px; }
+.case-page nav div { display:flex; gap:16px; }
+.case-page h1 { font-size:clamp(40px,8vw,80px); margin:20px 0 48px; }
+.case-page h2 { margin:40px 0 16px; }
+.case-page p { line-height:1.8; max-width:72ch; }
+.case-page footer { margin-top:48px; }
+.case-page a:focus-visible, .quick-page a:focus-visible, button:focus-visible { outline:3px solid #b4ed9b; outline-offset:4px; }
+.project-card > p { line-height:1.65; }
+.contact-section > p:not(.kicker) { max-width:60ch; margin:24px auto; line-height:1.7; }
+.storage-note { color:#ffda94; margin:0; padding:8px 16px; }
+
+.game-loading { position:absolute; top:45%; left:50%; transform:translateX(-50%); padding:16px; background:#12271f; color:#fff; }

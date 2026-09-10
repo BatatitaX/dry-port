@@ -4,8 +4,8 @@ import test from "node:test";
 
 const projectRoot = new URL("../", import.meta.url);
 const readProjectFile = (path) => readFileSync(new URL(path, projectRoot), "utf8");
-const game = readProjectFile("app/page.tsx");
-const extras = readProjectFile("app/game-extras.tsx");
+const game = ["app/content/portfolio.ts", "app/journey-client.tsx", "app/quick-portfolio.tsx", "app/game/world.ts", "app/game/world-scene.ts"].map(readProjectFile).join("\n");
+const extras = readProjectFile("app/game/data.ts") + readProjectFile("app/game-extras.tsx");
 
 test("every world structure, scenery image, portrait and résumé exists", () => {
   const structureIds = Array.from(game.matchAll(/\{ id: "([a-z-]+)", memoryId:/g), (match) => match[1]);
@@ -96,7 +96,7 @@ test("public metadata is production-ready", () => {
 });
 
 test("keyboard, touch and external-link protections remain available", () => {
-  assert.match(game, /arrowup: "w"/);
+  assert.match(game, /isMovementKey\(key\)/);
   assert.match(game, /event\.key === "Escape"/);
   assert.match(game, /onPointerDown=\{\(event\) => startTouchMovement/);
   assert.match(game, /https:\/\/github\.com\/BatatitaX/);
