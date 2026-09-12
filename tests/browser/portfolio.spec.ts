@@ -1,13 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
-const SAVE_KEY = "dry-observatory-v1";
-const TEST_KEY = "dry-observatory-test-v1";
+const SAVE_KEY = "dry-guided-tutorial-v2";
+const TEST_KEY = "dry-guided-lab-v2";
 async function enterGame(page: Page) {
   await page.goto("/jornada");
-  await expect(page.locator(".ob-world canvas[data-ready=true]")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Encontre sua Lente", exact: true })).toBeVisible();
+  await expect(page.locator(".guided-world canvas[data-ready=true]")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Primeiro, encontre seu ritmo.", exact: true })).toBeVisible();
 }
 async function progress(page: Page, key = SAVE_KEY) {
-  return page.evaluate(k => JSON.parse(localStorage.getItem(k) || "null")?.progress, key);
+  return page.evaluate(k => JSON.parse(localStorage.getItem(k) || "null"), key);
 }
 
 test("professional routes work independently of the game and save", async ({ page }) => {
@@ -27,7 +27,7 @@ test("professional routes work independently of the game and save", async ({ pag
 test("direct tutorial loads with a corrupt save and pauses on blur", async ({ page }) => {
   await page.addInitScript(key => localStorage.setItem(key, "null"), SAVE_KEY);
   await enterGame(page);
-  await expect.poll(async () => (await progress(page))?.lens).toBe(false);
+  await expect.poll(async () => (await progress(page))?.phase).toBe(0);
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(page.getByRole("dialog", { name: "Seu jeito de jogar" })).toBeVisible();
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
@@ -54,12 +54,12 @@ test("laboratory reset cannot overwrite the normal game", async ({ page }) => {
   await page.getByRole("button", { name: /Testes/, exact: false }).filter({ visible: true }).click();
   await page.getByRole("button", { name: "Entrar no laboratório", exact: true }).click();
   await page.getByRole("button", { name: /Testes/, exact: false }).filter({ visible: true }).click();
-  await page.getByRole("button", { name: "Drone", exact: true }).click();
-  await expect.poll(async () => (await progress(page, TEST_KEY))?.mirrors).toEqual([1, 2]);
+  await page.getByRole("button", { name: "3. Desvio", exact: true }).click();
+  await expect.poll(async () => (await progress(page, TEST_KEY))?.phase).toBe(2);
   expect(await progress(page)).toEqual(original);
   await page.getByRole("button", { name: /Testes/, exact: false }).filter({ visible: true }).click();
   await page.getByRole("button", { name: "Voltar à partida", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Encontre sua Lente", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Primeiro, encontre seu ritmo.", exact: true })).toBeVisible();
 });
 
 test("touch controls and actions stay visible on a narrow screen", async ({ page, isMobile }) => {
@@ -67,7 +67,7 @@ test("touch controls and actions stay visible on a narrow screen", async ({ page
   await enterGame(page);
   const joystick = page.getByRole("group", { name: "Mover", exact: true });
   await expect(joystick).toBeVisible();
-  for (const name of ["Observar", "Pulso", "Esquiva", "Interagir"]) await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+  for (const name of ["Ajustar", "Esquiva"]) await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Portfólio", exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
