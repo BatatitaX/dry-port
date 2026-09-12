@@ -18,49 +18,37 @@ O portfólio abre em `/`; para jogar, entre em `/jornada`.
 O script `dev` funciona no PowerShell e CMD: as configurações locais do Wrangler
 já são definidas no `vite.config.ts`, sem a sintaxe de variáveis exclusiva do Unix.
 
-## Tutorial jogável
+## Tutorial por etapas
 
-1. Vá até a Lente luminosa à esquerda e use **E** para pegá-la.
-2. Use **Q** para revelar os arcos dourados dos refletores. Aproxime-se e use **E**
-   para girar cada ponteiro até o arco correspondente. O circuito resolvido fica travado.
-3. Atravesse a faixa de energia quando apagar, use a esquiva ou siga pela rota inferior
-   e desligue a faixa no interruptor. O caminho inferior permanece acessível.
-4. Use **E** perto do drone para começar o treino. Saia do círculo marcado antes
-   do disparo. O núcleo fica aberto depois do ataque: mire e use **Pulso** três vezes.
-5. Recolha a célula com **E** e leve-a à porta do observatório para concluir.
+A nova entrada `/jornada` começa em um espaço vazio, com o personagem e a indicação de WASD.
+Cada mecânica aparece somente quando a anterior foi aprendida:
 
-Três sinos ressonantes e um caderno de campo ficam disponíveis para exploração.
-O caderno contém texto ficcional do tutorial, não um poema atribuído ao autor.
+1. **Movimento:** caminhe para cima, esquerda, baixo e direita usando WASD/setas ou joystick.
+   As quatro direções precisam ser usadas com deslocamento real; apertar uma tecla parado
+   contra a borda não conclui a etapa.
+2. **Relógios:** surgem dois relógios. Aproxime-se e use **E** para ajustar os ponteiros
+   para **03:00** e **09:00**. **Q** destaca a posição correta. Ao resolver os dois,
+   os relógios saem da área e o próximo exercício aparece.
+3. **Desvio:** atravesse as três faixas de pulso e alcance o marcador. **Espaço** permite
+   uma esquiva com recarga; os caminhos por cima e por baixo são alternativas sem tempo.
+   Um contato com uma faixa ativa devolve o personagem ao começo desse exercício.
 
-## Controles
+A interface mostra apenas as ações da etapa atual. No toque, o joystick fica à esquerda
+com o botão da ação à direita. **Esc** pausa e oferece idiomas, animações reduzidas e
+modo assistido sem dano. Perder o foco pausa e limpa a entrada.
 
-| Ação | Teclado e mouse | Toque |
-| --- | --- | --- |
-| Mover | WASD ou setas | Joystick esquerdo |
-| Observar | Q | Botão Observar |
-| Pulso | Clique na direção desejada ou F com mira assistida | Botão Pulso com mira assistida |
-| Esquiva | Espaço | Botão Esquiva |
-| Interagir | E | Botão Interagir |
-| Pausar | Esc | Botão Pausa |
-| Laboratório | T | Botão Testes |
+O visual usa uma ilustração mais simples do personagem, formas planas e relógios
+funcionais desenhados pelo motor. Não carrega o cenário pintado, drone ou atlas de objetos
+da versão anterior. O movimento tem aceleração e frenagem curtas, passos associados ao
+deslocamento real e câmera com suavização dependente do tempo.
 
-A pausa oferece idiomas, efeitos sonoros opcionais, mira assistida, modo sem dano,
-redução de animações e câmera fixa. Perder o foco pausa a simulação e limpa a entrada.
-O modo assistido preserva o puzzle e as janelas de vulnerabilidade do drone.
+## Laboratório e progresso
 
-## Laboratório
-
-Abra **Testes → Entrar no laboratório**. O modo usa um save separado da partida normal.
-É possível reiniciar os refletores, o drone ou todo o tutorial; ajustar velocidade
-(120–320 px/s) e duração da esquiva; ativar invulnerabilidade, colisões visíveis,
-câmera fixa e animação reduzida. O painel mostra FPS, intervalo médio aproximado
-por quadro e coordenadas. **Voltar à partida** restaura o progresso normal.
-Os ajustes de laboratório são temporários e não afetam a partida normal.
-
-O save versionado é local: `dry-observatory-v1` e `dry-observatory-test-v1`.
-Reabrir a página restaura objetivos e um checkpoint seguro, não um ataque em andamento.
-Saves anteriores da jornada em pixel art permanecem intactos, mas não são convertidos
-em progresso deste novo tutorial.
+**T → Entrar no laboratório** abre uma partida independente, com seleção de Movimento,
+Relógios ou Desvio e ajuste de velocidade. O painel mostra FPS e coordenadas. Ao voltar
+à partida normal, seu progresso é restaurado. O salvamento usa as chaves versionadas
+`dry-guided-tutorial-v2` e `dry-guided-lab-v2`, sem apagar saves das versões anteriores.
+Reabrir a página restaura a etapa e os relógios em um ponto seguro.
 
 ## Produção
 
@@ -87,12 +75,12 @@ build, ou o fluxo Next.js. Essa limitação não afeta `npm run dev` no PowerShe
 - `app/page.tsx`, `app/portfolio/`: portfólio profissional.
 - `app/projetos/[slug]/`: detalhes dos projetos.
 - `app/jornada/page.tsx`: entrada direta do novo tutorial.
-- `app/game/tutorial/model.ts`: simulação, colisões, combate, progresso e checkpoints.
-- `app/game/tutorial/scene.ts`: renderização Phaser, câmera, luz e efeitos.
+- `app/game/guided/model.ts`: etapas, movimento, relógios, desvio e progresso.
+- `app/game/guided/scene.ts`: cenário simples, relógios, transições e câmera.
 - `app/game/tutorial/avatar.ts`: caminhada articulada, postura e ancoragem dos pés.
-- `app/game/tutorial/effects.ts` e `audio.ts`: efeitos visuais e sonoros dos eventos.
-- `app/game/tutorial/tutorial-client.tsx`: interface React, áudio, toque, pausa e laboratório.
-- `app/game/tutorial/copy.ts`: textos PT/EN/ES.
+- `app/game/tutorial/`: também conserva os módulos da versão anterior, sem carregá-los na nova entrada.
+- `app/game/guided/client.tsx`: interface progressiva, toque, pausa, idiomas e laboratório.
+- `app/game/guided/style.css`: interface limpa, responsiva e com movimento reduzido.
 - `public/observatory/`: cenário e atlases ilustrados, gerados a partir da direção aprovada.
 - `app/journey-client.tsx` e demais módulos antigos de `app/game/`: implementação anterior
   conservada como referência para a expansão; não é carregada pela rota nova.
@@ -119,5 +107,5 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-Confira `docs/OBSERVATORIO.md` para escopo e limitações desta primeira área e
+Confira `docs/TUTORIAL-GUIADO.md` para o fluxo atual, `docs/OBSERVATORIO.md` para a versão anterior e
 `docs/CORRECOES.md` para os ajustes anteriores do portfólio e do CV.

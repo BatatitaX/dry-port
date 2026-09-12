@@ -16,11 +16,11 @@ export class Avatar extends Phaser.GameObjects.Container {
   private hurt = 0;
   frame = "avatar-0";
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
+  constructor(scene: Phaser.Scene, x: number, y: number, bounds = BOUNDS) {
     super(scene, x, y);
     const texture = scene.textures.get("dry-atlas");
     const cell = Math.floor(texture.getSourceImage().width / 4);
-    BOUNDS.forEach(([left, top, right, bottom], i) => {
+    bounds.forEach(([left, top, right, bottom], i) => {
       const w = right - left, h = bottom - top, split = Math.floor(w / 2);
       const hip = Math.floor(h * .62), overlap = Math.floor(h * .66);
       texture.add(`avatar-${i}`, 0, i * cell + left, top, w, h);
